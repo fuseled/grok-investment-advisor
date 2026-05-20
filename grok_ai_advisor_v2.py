@@ -134,7 +134,7 @@ for t in tickers:
         "Category": category_map[t],
         "Target %": f"{target_pct:.1f}%",
         "Current %": f"{current_pct:.1f}%",
-        "Current_Pct_Numeric": current_pct,          # ← This fixes the KeyError
+        "Current_Pct_Numeric": current_pct,
         "Drift": f"{drift:+.1f}%",
         "Price": price,
         "Shares": shares,
@@ -161,7 +161,7 @@ if 'high_yield_tracker' not in st.session_state:
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
-    # (full overview code with AI Analyst)
+    # Full overview with AI Analyst (unchanged)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -185,7 +185,6 @@ if page == "📊 Portfolio Overview":
     st.write(rec)
     st.caption(f"Current aggressive slice: **{aggressive_current:.1f}%** | VIX: **{current_vix}**")
 
-    # Sunburst + Category Summary
     col_chart, col_table = st.columns(2)
     with col_chart:
         st.subheader("📊 Current Portfolio Allocation")
@@ -219,6 +218,91 @@ if page == "📊 Portfolio Overview":
 
         st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
         st.markdown("---")
+
+elif page == "💰 Income Projections":
+    total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
+    expected_monthly = round(total_annual / 12, 0)
+
+    col1, col2, col3 = st.columns(3)
+    with col1: st.metric("**Average Projected Monthly Income**", f"${expected_monthly:,.0f}")
+    with col2: st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col3: st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
+
+    st.subheader("Detailed Payouts Schedule")
+    payout_rows = []
+    for t in tickers:
+        annual = round(targets[t]["amount"] * payout_data[t]["yield"] / 100, 0)
+        monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
+        if payout_data[t]["freq"] == "Weekly":
+            schedule = "Weekly (typically Fridays)"
+        elif payout_data[t]["freq"] == "Monthly":
+            schedule = "Monthly (usually mid-month)"
+        else:
+            schedule = "Mar 15, Jun 15, Sep 15, Dec 15"
+        payout_rows.append({
+            "Ticker": t,
+            "Category": category_map[t],
+            "Frequency": payout_data[t]["freq"],
+            "Est. Annual Yield": f"{payout_data[t]['yield']}%",
+            "Est. Annual Payout": f"${annual:,.0f}",
+            "Est. Monthly Payout": f"${monthly:,.0f}",
+            "Payout Schedule": schedule
+        })
+    st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
+
+elif page == "📋 Holding Details":
+    st.subheader("📋 Detailed Holding Information")
+    selected_ticker = st.selectbox("Select Holding", tickers)
+    if selected_ticker:
+        row = df[df["Ticker"] == selected_ticker].iloc[0]
+        target_amount = targets[selected_ticker]["amount"]
+
+        st.subheader("Description")
+        st.write(holding_descriptions.get(selected_ticker, "No description available."))
+
+        st.subheader(f"{selected_ticker} Detailed Table")
+        detail_df = pd.DataFrame([{
+            "Ticker": row["Ticker"],
+            "Category": row["Category"],
+            "Current Value": f"${row['Current Value']:,.0f}",
+            "Portfolio %": row["Current %"],
+            "Est. Annual Yield": row["Est. Annual Yield"],
+            "Est. Annual Payout": row["Est. Annual Payout"],
+            "Est. Monthly Payout": row["Est. Monthly Payout"],
+            "Frequency": row["Frequency"],
+        }])
+        st.dataframe(detail_df, use_container_width=True, hide_index=True)
+
+        st.subheader(f"📅 Projected Future Payouts for {selected_ticker}")
+        today = datetime(2026, 5, 20).date()
+        freq = payout_data[selected_ticker]["freq"]
+        annual_payout = target_amount * payout_data[selected_ticker]["yield"] / 100
+
+        dates = []
+        amounts = []
+        current = today + timedelta(days=7)
+        for i in range(12):
+            if freq == "Weekly":
+                current += timedelta(days=7)
+                per_payout = round(annual_payout / 52, 0)
+            elif freq == "Monthly":
+                current = current.replace(day=15) + timedelta(days=30)
+                per_payout = round(annual_payout / 12, 0)
+            else:
+                current += timedelta(days=90)
+                per_payout = round(annual_payout / 4, 0)
+            dates.append(current.strftime("%b %d, %Y"))
+            amounts.append(per_payout)
+
+        chart_df = pd.DataFrame({"Date": dates, "Projected Payout $": amounts})
+        fig = px.bar(chart_df, x="Date", y="Projected Payout $", title=f"Next 12 Projected Payouts – {selected_ticker}", color_discrete_sequence=["#1f6feb"], text="Projected Payout $")
+        fig.update_traces(texttemplate="$%{y:,.0f}", textposition="outside", width=0.5)
+        fig.update_layout(xaxis_tickangle=-45, bargap=0.4, height=480)
+        st.plotly_chart(fig, use_container_width=True)
+
+elif page == "📊 Portfolio Combined":
+    st.subheader("📊 Portfolio Combined View")
+    st.dataframe(df, use_container_width=True, hide_index=True)
 
 elif page == "💸 Reinvestment Strategy":
     st.subheader("💸 Monthly Surplus Reinvestment Strategy")

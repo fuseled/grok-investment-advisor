@@ -158,6 +158,10 @@ for t in tickers:
 df = pd.DataFrame(data)
 aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
 
+# Projected Income (used in Overview and Income Projections)
+total_annual = round(df["Est. Annual Payout"].str.replace("$","").str.replace(",","").astype(float).sum(), 0)
+total_monthly = round(total_annual / 12, 0)
+
 # ==================== TRACKERS ====================
 if 'high_yield_tracker' not in st.session_state:
     st.session_state.high_yield_tracker = pd.DataFrame([
@@ -182,11 +186,13 @@ if 'quality_growth_tracker' not in st.session_state:
 
 # ==================== PAGE SELECTION ====================
 if page == "Portfolio Overview":
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
     with col3: st.metric("Current VIX", f"{current_vix}")
     with col4: st.metric("Liquidity Score", "94/100")
+    with col5: st.metric("Projected Yearly Payout", f"${total_annual:,.0f}")
+    with col6: st.metric("Projected Monthly Payout", f"${total_monthly:,.0f}")
 
     st.subheader("Grok AI Portfolio Evaluation")
     vix_comment = "High volatility — excellent premiums!" if current_vix > 28 else "Low volatility — premiums shrinking." if current_vix < 15 else "Normal volatility range."
@@ -241,8 +247,6 @@ if page == "Portfolio Overview":
 
 elif page == "Income Projections":
     st.subheader("Income Projections")
-    total_annual = round(df["Est. Annual Payout"].str.replace("$","").str.replace(",","").astype(float).sum(), 0)
-    total_monthly = round(total_annual / 12, 0)
     st.metric("**2026 Projected Annual Income**", f"${total_annual:,.0f}", f"Average Monthly: ${total_monthly:,.0f}")
     st.dataframe(df[["Ticker", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
 

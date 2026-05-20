@@ -38,9 +38,11 @@ TOTAL_CAPITAL = 2_100_000
 
 targets = {
     "JEPI": {"target_pct": 42.9, "amount": 900_000},
-    "SCHD": {"target_pct": 23.8, "amount": 500_000},
+    "SCHD": {"target_pct": 12.19, "amount": 256_000},   # 40% of Quality slice
     "JEPQ": {"target_pct": 14.3, "amount": 300_000},
-    "VIG":  {"target_pct": 6.7,  "amount": 140_000},
+    "VIG":  {"target_pct": 6.10, "amount": 128_000},    # 20% of Quality slice
+    "DGRO": {"target_pct": 6.10, "amount": 128_000},    # NEW - 20%
+    "VYM":  {"target_pct": 6.10, "amount": 128_000},    # NEW - 20%
     "SGOV": {"target_pct": 2.9,  "amount": 60_000},
     "NVDY": {"target_pct": 1.19, "amount": 25_000},
     "ULTY": {"target_pct": 1.19, "amount": 25_000},
@@ -52,6 +54,7 @@ targets = {
 category_map = {
     "JEPI": "Core Stable Income", "JEPQ": "Core Stable Income",
     "SCHD": "Quality Dividend Growth", "VIG": "Quality Dividend Growth",
+    "DGRO": "Quality Dividend Growth", "VYM": "Quality Dividend Growth",
     "SGOV": "Cash Buffer",
     "NVDY": "Aggressive High-Yield", "ULTY": "Aggressive High-Yield",
     "CHPY": "Aggressive High-Yield", "MRNY": "Aggressive High-Yield",
@@ -63,6 +66,8 @@ payout_data = {
     "JEPQ": {"freq": "Monthly", "yield": 10.3},
     "SCHD": {"freq": "Quarterly", "yield": 3.3},
     "VIG":  {"freq": "Quarterly", "yield": 1.6},
+    "DGRO": {"freq": "Quarterly", "yield": 2.4},
+    "VYM":  {"freq": "Quarterly", "yield": 3.0},
     "SGOV": {"freq": "Monthly", "yield": 4.5},
     "NVDY": {"freq": "Weekly", "yield": 60.0},
     "ULTY": {"freq": "Weekly", "yield": 65.0},
@@ -84,6 +89,8 @@ holding_descriptions = {
     "JEPQ": "JPMorgan Nasdaq Equity Premium Income ETF – Covered call strategy on the Nasdaq-100 for higher monthly income with tech exposure. **Role in portfolio**: Adds growth-oriented monthly income while still offering downside cushion through options.",
     "SCHD": "Schwab U.S. Dividend Equity ETF – High-quality U.S. companies with strong dividend growth and financial health. **Role in portfolio**: Delivers reliable quarterly dividend growth and long-term capital appreciation.",
     "VIG": "Vanguard Dividend Appreciation ETF – Companies that have consistently increased dividends for many years. **Role in portfolio**: Focuses on quality dividend growth to help combat inflation over time.",
+    "DGRO": "iShares Core Dividend Growth ETF – Broad dividend growth companies with strong fundamentals. **Role in portfolio**: Adds diversified, lower-volatility dividend growth.",
+    "VYM": "Vanguard High Dividend Yield ETF – High-yielding quality companies. **Role in portfolio**: Boosts the yield of the Quality slice while maintaining strong fundamentals.",
     "SGOV": "iShares 0-3 Month Treasury Bond ETF – Ultra-safe short-term U.S. Treasuries used as a cash buffer. **Role in portfolio**: Provides liquidity and stability; acts as your emergency cash reserve.",
     "NVDY": "YieldMax NVDA Option Income Strategy ETF – High-yield weekly option income on NVIDIA. **Role in portfolio**: Tactical high-yield booster that you can scale up or down quickly for extra short-term income.",
     "ULTY": "YieldMax Ultra Option Income Strategy ETF – Diversified high-volatility stocks using aggressive option strategies. **Role in portfolio**: Highest-yielding slice for opportunistic profit-taking when volatility is elevated.",
@@ -120,7 +127,7 @@ current_vix = get_vix()
 data = []
 for t in tickers:
     target_amount = targets[t]["amount"]
-    price = prices[t]
+    price = prices.get(t, 0)
     shares = round(target_amount / price, 2) if price > 0 else 0
     current_value = round(shares * price, 2)
     current_pct = round((current_value / TOTAL_CAPITAL) * 100, 2)
@@ -252,7 +259,6 @@ elif page == "📋 Holding Details":
         }])
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
 
-        # ==================== UPDATED PAYOUT CHART ====================
         st.subheader(f"📅 Projected Future Payouts for {selected_ticker}")
         today = datetime(2026, 5, 20).date()
         freq = payout_data[selected_ticker]["freq"]
@@ -261,7 +267,6 @@ elif page == "📋 Holding Details":
         dates = []
         amounts = []
         current = today + timedelta(days=7)
-
         for i in range(12):
             if freq == "Weekly":
                 current += timedelta(days=7)
@@ -269,67 +274,13 @@ elif page == "📋 Holding Details":
             elif freq == "Monthly":
                 current = current.replace(day=15) + timedelta(days=30)
                 per_payout = round(annual_payout / 12, 0)
-            else:  # Quarterly
+            else:
                 current += timedelta(days=90)
                 per_payout = round(annual_payout / 4, 0)
             dates.append(current.strftime("%b %d, %Y"))
             amounts.append(per_payout)
 
         chart_df = pd.DataFrame({"Date": dates, "Projected Payout $": amounts})
-
-        fig = px.bar(
-            chart_df, 
-            x="Date", 
-            y="Projected Payout $",
-            title=f"Next 12 Projected Payouts – {selected_ticker}",
-            color_discrete_sequence=["#1f6feb"],
-            text="Projected Payout $"
-        )
-
-        fig.update_traces(
-            texttemplate="$%{y:,.0f}",
-            textposition="outside",
-            width=0.5          # ← 50% bar width (thinner bars)
-        )
-
-        fig.update_layout(
-            xaxis_tickangle=-45,
-            bargap=0.4,        # extra spacing between bars
-            height=480
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-
-elif page == "📊 Portfolio Combined":
-    st.subheader("📊 Portfolio Combined View")
-    st.dataframe(df, use_container_width=True, hide_index=True)
-
-elif page == "💸 Reinvestment Strategy":
-    st.subheader("💸 Monthly Surplus Reinvestment Strategy")
-    st.write("""
-    **Goal**: Automatically roll over any unspent income each month to fight inflation, strengthen the core portfolio, and allow tactical short-term boosts.
-    
-    **Allocation Rule**:
-    - 60% → Quality Dividend Growth (SCHD + VIG)
-    - 30% → Core Stable Income (JEPI)
-    - 10% → Tactical High-Risk Boost (YieldMax slice: NVDY, ULTY, CHPY, MRNY, YMAX)
-    """)
-
-    monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="%.0f")
-
-    st.subheader("Distribution for this month")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Quality Dividend Growth (60%)", f"${round(monthly_surplus * 0.60):,.0f}")
-    with col2:
-        st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
-    with col3:
-        st.metric("Tactical High-Risk Boost (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
-
-    st.info("These amounts can be manually added to the respective holdings each month.")
-
-elif page == "🛡️ Guardrails & Alerts":
-    st.subheader("🛡️ Proactive Guardrails")
-    st.info("All guardrails are currently **GREEN**. No immediate action required.")
-
-st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
+        fig = px.bar(chart_df, x="Date", y="Projected Payout $", title=f"Next 12 Projected Payouts – {selected_ticker}", color_discrete_sequence=["#1f6feb"], text="Projected Payout $")
+        fig.update_traces(texttemplate="$%{y:,.0f}", textposition="outside", width=0.5)
+        fig.update_layout(xaxis_tickangle=-45, bargap=0.4, height=

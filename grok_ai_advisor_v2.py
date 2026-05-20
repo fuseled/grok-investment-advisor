@@ -123,6 +123,7 @@ if st.button("🔄 REFRESH LIVE DATA", type="primary", use_container_width=True)
         st.success("✅ Live data loaded!")
 
         if page == "📊 Portfolio Overview":
+            # 4 PROGRESS BUBBLES WITH $ NUMBERS
             col1, col2, col3, col4 = st.columns(4)
             with col1:
                 st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
@@ -131,7 +132,7 @@ if st.button("🔄 REFRESH LIVE DATA", type="primary", use_container_width=True)
             with col3:
                 st.metric("Current VIX", f"{current_vix}")
             with col4:
-                st.metric("Liquidity Score", "94/100")
+                st.metric("Liquidity Score", "94/100", "Can pull ~$1.3M+ quickly")
 
             st.subheader("🤖 Grok AI Portfolio Evaluation")
             aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
@@ -153,29 +154,24 @@ if st.button("🔄 REFRESH LIVE DATA", type="primary", use_container_width=True)
 
         elif page == "💰 Income Projections":
             total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
-
             col1, col2 = st.columns(2)
             with col1:
                 st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
             with col2:
                 st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
 
-            # === NEW: Progress Bars ===
-            st.subheader("📈 Income Progress")
-            col_p1, col_p2 = st.columns(2)
-            with col_p1:
-                st.progress(0.45)  # Example: 45% of current month received
-                st.caption("Current Month Progress (Received vs Expected)")
-            with col_p2:
-                st.progress(0.38)  # Example: 38% of year received
-                st.caption("YTD Income Progress (Received vs 2026 Expected)")
-
-            # Detailed Payouts Table
-            st.subheader("Detailed Payouts Table")
+            # DETAILED PAYOUTS TABLE WITH PAYOUT SCHEDULE
+            st.subheader("Detailed Payouts Schedule")
             payout_rows = []
             for t in tickers:
                 annual = round(targets[t]["amount"] * payout_data[t]["yield"] / 100, 0)
                 monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
+                if payout_data[t]["freq"] == "Weekly":
+                    schedule = "Weekly (typically Fridays) ≈ $" + f"{monthly:,.0f}"
+                elif payout_data[t]["freq"] == "Monthly":
+                    schedule = "Monthly (usually 15th) ≈ $" + f"{monthly:,.0f}"
+                else:  # Quarterly
+                    schedule = "Mar 15, Jun 15, Sep 15, Dec 15 ≈ $" + f"{monthly:,.0f} each"
                 payout_rows.append({
                     "Ticker": t,
                     "Category": category_map[t],
@@ -183,10 +179,11 @@ if st.button("🔄 REFRESH LIVE DATA", type="primary", use_container_width=True)
                     "Est. Annual Yield": f"{payout_data[t]['yield']}%",
                     "Est. Annual Payout": f"${annual:,.0f}",
                     "Est. Monthly Payout": f"${monthly:,.0f}",
+                    "Payout Schedule": schedule
                 })
             st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
 
-            # 2026 Monthly Calendar
+            # Monthly Calendar
             with st.expander("📆 2026 Monthly Payout Calendar", expanded=True):
                 st.subheader("2026 Monthly Payout Calendar")
                 months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]

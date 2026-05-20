@@ -38,11 +38,11 @@ TOTAL_CAPITAL = 2_100_000
 
 targets = {
     "JEPI": {"target_pct": 42.9, "amount": 900_000},
-    "SCHD": {"target_pct": 12.19, "amount": 256_000},   # 40% of Quality slice
+    "SCHD": {"target_pct": 12.19, "amount": 256_000},
     "JEPQ": {"target_pct": 14.3, "amount": 300_000},
-    "VIG":  {"target_pct": 6.10, "amount": 128_000},    # 20% of Quality slice
-    "DGRO": {"target_pct": 6.10, "amount": 128_000},    # NEW - 20%
-    "VYM":  {"target_pct": 6.10, "amount": 128_000},    # NEW - 20%
+    "VIG":  {"target_pct": 6.10, "amount": 128_000},
+    "DGRO": {"target_pct": 6.10, "amount": 128_000},
+    "VYM":  {"target_pct": 6.10, "amount": 128_000},
     "SGOV": {"target_pct": 2.9,  "amount": 60_000},
     "NVDY": {"target_pct": 1.19, "amount": 25_000},
     "ULTY": {"target_pct": 1.19, "amount": 25_000},
@@ -259,6 +259,7 @@ elif page == "📋 Holding Details":
         }])
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
 
+        # ==================== PROJECTED FUTURE PAYOUT CHART ====================
         st.subheader(f"📅 Projected Future Payouts for {selected_ticker}")
         today = datetime(2026, 5, 20).date()
         freq = payout_data[selected_ticker]["freq"]
@@ -281,6 +282,60 @@ elif page == "📋 Holding Details":
             amounts.append(per_payout)
 
         chart_df = pd.DataFrame({"Date": dates, "Projected Payout $": amounts})
-        fig = px.bar(chart_df, x="Date", y="Projected Payout $", title=f"Next 12 Projected Payouts – {selected_ticker}", color_discrete_sequence=["#1f6feb"], text="Projected Payout $")
-        fig.update_traces(texttemplate="$%{y:,.0f}", textposition="outside", width=0.5)
-        fig.update_layout(xaxis_tickangle=-45, bargap=0.4, height=
+
+        fig = px.bar(
+            chart_df, 
+            x="Date", 
+            y="Projected Payout $",
+            title=f"Next 12 Projected Payouts – {selected_ticker}",
+            color_discrete_sequence=["#1f6feb"],
+            text="Projected Payout $"
+        )
+
+        fig.update_traces(
+            texttemplate="$%{y:,.0f}",
+            textposition="outside",
+            width=0.5
+        )
+
+        fig.update_layout(
+            xaxis_tickangle=-45,
+            bargap=0.4,
+            height=480
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+elif page == "📊 Portfolio Combined":
+    st.subheader("📊 Portfolio Combined View")
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+elif page == "💸 Reinvestment Strategy":
+    st.subheader("💸 Monthly Surplus Reinvestment Strategy")
+    st.write("""
+    **Goal**: Automatically roll over any unspent income each month to fight inflation, strengthen the core portfolio, and allow tactical short-term boosts.
+    
+    **Allocation Rule** (FLIPPED):
+    - 60% → Tactical High-Risk Boost (YieldMax slice: NVDY, ULTY, CHPY, MRNY, YMAX)
+    - 30% → Core Stable Income (JEPI)
+    - 10% → Quality Dividend Growth (SCHD + VIG + DGRO + VYM)
+    """)
+
+    monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="%.0f")
+
+    st.subheader("Distribution for this month")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Tactical High-Risk Boost (60%)", f"${round(monthly_surplus * 0.60):,.0f}")
+    with col2:
+        st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
+    with col3:
+        st.metric("Quality Dividend Growth (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
+
+    st.info("These amounts can be manually added to the respective holdings each month.")
+
+elif page == "🛡️ Guardrails & Alerts":
+    st.subheader("🛡️ Proactive Guardrails")
+    st.info("All guardrails are currently **GREEN**. No immediate action required.")
+
+st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")

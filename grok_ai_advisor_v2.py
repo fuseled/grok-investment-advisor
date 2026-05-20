@@ -10,8 +10,8 @@ st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", pa
 st.markdown("""
 <style>
     .stApp { background-color: #0e1117; color: #fafafa; }
-    .stMetric { background-color: #1a1f2e; border-radius: 10px; padding: 15px; border: 1px solid #2d3748; }
-    .stButton>button { background-color: #1f6feb; color: white; border-radius: 8px; font-weight: 600; padding: 12px 24px; }
+    .stMetric { background-color: #1a1f2e; border-radius: 12px; padding: 18px; border: 1px solid #2d3748; }
+    .stButton>button { background-color: #1f6feb; color: white; border-radius: 8px; font-weight: 600; padding: 14px 28px; }
     h1, h2, h3 { color: #ffffff; }
     .stSidebar { background-color: #161b28; }
 </style>
@@ -52,16 +52,16 @@ category_map = {
 }
 
 payout_data = {
-    "JEPI": {"freq": "Monthly", "yield": 8.4, "notes": "Covered calls"},
-    "JEPQ": {"freq": "Monthly", "yield": 10.3, "notes": "Covered calls"},
-    "SCHD": {"freq": "Quarterly", "yield": 3.3, "notes": "Qualified dividends"},
-    "VIG":  {"freq": "Quarterly", "yield": 1.6, "notes": "Qualified dividends"},
-    "SGOV": {"freq": "Monthly", "yield": 4.5, "notes": "Treasury interest"},
-    "NVDY": {"freq": "Weekly", "yield": 60.0, "notes": "High ROC expected"},
-    "ULTY": {"freq": "Weekly", "yield": 65.0, "notes": "High ROC expected"},
-    "CHPY": {"freq": "Weekly", "yield": 46.0, "notes": "High ROC expected"},
-    "MRNY": {"freq": "Weekly", "yield": 71.0, "notes": "High ROC expected"},
-    "YMAX": {"freq": "Weekly", "yield": 57.0, "notes": "High ROC expected"},
+    "JEPI": {"freq": "Monthly", "yield": 8.4},
+    "JEPQ": {"freq": "Monthly", "yield": 10.3},
+    "SCHD": {"freq": "Quarterly", "yield": 3.3},
+    "VIG":  {"freq": "Quarterly", "yield": 1.6},
+    "SGOV": {"freq": "Monthly", "yield": 4.5},
+    "NVDY": {"freq": "Weekly", "yield": 60.0},
+    "ULTY": {"freq": "Weekly", "yield": 65.0},
+    "CHPY": {"freq": "Weekly", "yield": 46.0},
+    "MRNY": {"freq": "Weekly", "yield": 71.0},
+    "YMAX": {"freq": "Weekly", "yield": 57.0},
 }
 
 tickers = list(targets.keys())
@@ -90,9 +90,9 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
         prices = get_live_prices(tickers)
         current_vix = get_vix()
 
+        # Build main dataframe
         data = []
         total_current_value = 0
-
         for t in tickers:
             target_amount = targets[t]["amount"]
             price = prices[t]
@@ -113,7 +113,6 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
                 "Price": price,
                 "Shares": shares,
                 "Current Value": current_value,
-                "Role": targets[t]["role"]
             })
 
         df = pd.DataFrame(data)
@@ -132,15 +131,14 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
         st.subheader("🤖 Grok AI Portfolio Evaluation")
         aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
         vix_comment = "High volatility — excellent premiums!" if current_vix > 28 else "Low volatility — premiums shrinking." if current_vix < 15 else "Normal volatility range."
-        slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add if desired." if aggressive_current < 4.0 else "Right on target."
-        st.info(f"**Overall Condition:** Healthy. VIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}\n\n**Recommendation:** No immediate action needed. Follow monthly surplus rule.")
+        slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
+        st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}\n\n**Recommendation:** No immediate action needed.")
 
-        # Sunburst Chart
+        # Sunburst + Category Summary + Holdings (unchanged)
         st.subheader("📊 Current Portfolio Allocation")
         fig_sunburst = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
         st.plotly_chart(fig_sunburst, use_container_width=True)
 
-        # Category Subtotals
         st.subheader("📊 Portfolio by Strategy Category")
         cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
         cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
@@ -149,16 +147,19 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
         st.subheader("Holdings Breakdown by Strategy Category")
         st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], use_container_width=True, hide_index=True)
 
-        # ==================== DETAILED PAYOUTS TABLE ====================
-        st.header("💰 Detailed Payouts Section")
+        # ==================== CLEAN PAYOUTS SECTION (Div Tracker style) ====================
+        st.header("💰 Income Projections")
+
+        # Calculate monthly and annual payouts
         payout_rows = []
         total_annual = 0
+        monthly_payouts = []  # for the bar chart
         for t in tickers:
             amt = targets[t]["amount"]
             yld = payout_data[t]["yield"]
             ann = round(amt * yld / 100, 0)
             total_annual += ann
-            mo = round(ann / 12, 0) if payout_data[t]["freq"] in ["Monthly","Weekly"] else round(ann / 4, 0)
+            mo = round(ann / 12, 0)
             payout_rows.append({
                 "Ticker": t,
                 "Category": category_map[t],
@@ -166,48 +167,40 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
                 "Est. Annual Yield": f"{yld}%",
                 "Est. Annual Payout": f"${ann:,.0f}",
                 "Est. Monthly Payout": f"${mo:,.0f}",
-                "Notes": payout_data[t]["notes"]
             })
+            monthly_payouts.append({"Ticker": t, "Category": category_map[t], "Monthly Payout": mo})
+
         payout_df = pd.DataFrame(payout_rows)
-        st.dataframe(payout_df, use_container_width=True, hide_index=True)
 
-        # ==================== NEW 12-MONTH STACKED BAR GRAPH ====================
-        st.subheader("📈 Projected 12-Month Payout Schedule (Stacked by Holding)")
+        # Monthly Income Projection Bar Chart (clean Div Tracker style)
+        st.subheader("📈 Monthly Income Projection (2026)")
         months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-        stacked_data = []
-        for t in tickers:
-            monthly_payout = round(targets[t]["amount"] * payout_data[t]["yield"] / 100 / 12, 0)
-            for m in months:
-                stacked_data.append({
-                    "Month": m,
-                    "Ticker": t,
-                    "Category": category_map[t],
-                    "Monthly Payout": monthly_payout
-                })
-        stacked_df = pd.DataFrame(stacked_data)
+        monthly_data = []
+        for m in months:
+            monthly_data.append({"Month": m, "Total Monthly Payout": round(total_annual / 12, 0)})
+        monthly_df = pd.DataFrame(monthly_data)
 
-        fig_stacked = px.bar(
-            stacked_df,
+        fig_monthly = px.bar(
+            monthly_df,
             x="Month",
-            y="Monthly Payout",
-            color="Ticker",
-            title="Projected Monthly Payouts Over 12 Months (Stacked by Holding)",
-            barmode="stack",
-            height=550
+            y="Total Monthly Payout",
+            title="Projected Monthly Income — 2026",
+            color_discrete_sequence=["#1f6feb"],
+            height=450
         )
-        fig_stacked.update_layout(xaxis_title="Month", yaxis_title="Projected Monthly Payout ($)")
-        st.plotly_chart(fig_stacked, use_container_width=True)
+        fig_monthly.update_traces(texttemplate="$%{y:,.0f}", textposition="outside")
+        st.plotly_chart(fig_monthly, use_container_width=True)
 
-        # Summary metrics
-        col_a, col_b, col_c = st.columns(3)
-        with col_a:
-            st.metric("Total Projected Annual Payout", f"${total_annual:,.0f}")
-        with col_b:
-            st.metric("Blended Yield", f"{(total_annual / TOTAL_CAPITAL * 100):.1f}%")
-        with col_c:
-            st.metric("After-Tax (MFJ est.)", f"~${total_annual - 34500:,.0f}")
+        # Yearly Income Summary Cards
+        st.subheader("📅 Yearly Income Summary")
+        col_y1, col_y2 = st.columns(2)
+        with col_y1:
+            st.metric("**2026 Projected Income**", f"${total_annual:,.0f}", "Current projection")
+        with col_y2:
+            st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
 
-        st.caption("Note: YieldMax payouts are variable and often include high Return of Capital (ROC).")
+        # Payouts detail table
+        st.dataframe(payout_df, use_container_width=True, hide_index=True)
 
         st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
 

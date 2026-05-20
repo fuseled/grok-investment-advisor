@@ -127,7 +127,7 @@ df = pd.DataFrame(data)
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
-    # 4 Progress Bubbles
+    # (Your existing overview code)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -140,53 +140,48 @@ if page == "📊 Portfolio Overview":
     slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
     st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}")
 
-    # Sunburst + Category Summary SIDE-BY-SIDE
-    col_chart, col_table = st.columns(2)
-    with col_chart:
-        st.subheader("📊 Current Portfolio Allocation")
-        fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
-        st.plotly_chart(fig, use_container_width=True)
-    with col_table:
-        st.subheader("📊 Portfolio by Strategy Category")
-        cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
-        cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
-        st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
+    st.subheader("📊 Current Portfolio Allocation")
+    fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
+    st.plotly_chart(fig, use_container_width=True)
 
-    # ==================== SEPARATE HEADERS FOR EACH CATEGORY WITH QUARTERLY / YEARLY $ ====================
+    st.subheader("📊 Portfolio by Strategy Category")
+    cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
+    cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
+    st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
+
     st.subheader("Holdings Breakdown by Strategy Category")
     for cat in ["Core Stable Income", "Quality Dividend Growth", "Cash Buffer", "Aggressive High-Yield"]:
         cat_df = df[df["Category"] == cat].copy()
         if cat_df.empty:
             continue
-            
         total_value = cat_df["Current Value"].sum()
         total_pct = cat_df["Current_Pct_Numeric"].sum()
-        yearly_expected = round(cat_df["Est. Annual Payout"].str.replace("$","").str.replace(",","").astype(float).sum(), 0)
-        quarterly_expected = round(yearly_expected / 4, 0)
-
         st.markdown(f"### {cat}")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2 = st.columns(2)
         with col1:
             st.metric("Total Value", f"${total_value:,.0f}")
         with col2:
             st.metric("Portfolio %", f"{total_pct:.1f}%")
-        with col3:
-            st.metric("Expected Yearly $", f"${yearly_expected:,.0f}")
-        with col4:
-            st.metric("Expected Quarterly $", f"${quarterly_expected:,.0f}")
-
-        st.dataframe(
-            cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]],
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
         st.markdown("---")
 
 elif page == "💰 Income Projections":
     total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
     col1, col2 = st.columns(2)
-    with col1: st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
-    with col2: st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
+    with col1:
+        st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col2:
+        st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
+
+    # ==================== NEW: THIS MONTH'S TRACKER ====================
+    st.subheader("📈 Current Month (May 2026)")
+    col_m1, col_m2 = st.columns(2)
+    received_mtd = st.number_input("Received This Month ($)", value=1484.64, step=100.0, key="mtd_received")
+    expected_monthly = round(total_annual / 12, 0)
+    with col_m1:
+        st.metric("Received This Month", f"${received_mtd:,.2f}")
+    with col_m2:
+        st.metric("Expected This Month", f"${expected_monthly:,.0f}")
 
     st.subheader("Detailed Payouts Schedule")
     payout_rows = []
@@ -209,6 +204,32 @@ elif page == "💰 Income Projections":
             "Payout Schedule": schedule
         })
     st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
+
+    with st.expander("📆 2026 Monthly Payout Calendar", expanded=True):
+        st.subheader("2026 Monthly Payout Calendar")
+        months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        quarterly_months = ["Mar","Jun","Sep","Dec"]
+        cols = st.columns(4)
+        for i, month in enumerate(months):
+            with cols[i % 4]:
+                month_payout = 0
+                paying = []
+                for t in tickers:
+                    annual = targets[t]["amount"] * payout_data[t]["yield"] / 100
+                    if payout_data[t]["freq"] in ["Monthly", "Weekly"]:
+                        month_payout += annual / 12
+                        paying.append(t)
+                    elif payout_data[t]["freq"] == "Quarterly" and month in quarterly_months:
+                        month_payout += annual / 4
+                        paying.append(t)
+                month_payout = round(month_payout, 0)
+                st.markdown(f"""
+                <div class="month-box">
+                    <strong>{month}</strong><br>
+                    <span style="font-size: 1.5em; color:#1f6feb;">${month_payout:,.0f}</span><br>
+                    <small>{', '.join(paying[:3]) if paying else '—'}</small>
+                </div>
+                """, unsafe_allow_html=True)
 
 elif page == "📋 Holding Details":
     st.subheader("📋 Detailed Holding Information")

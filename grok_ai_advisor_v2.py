@@ -2,7 +2,7 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.express as px
-from datetime import datetime
+from datetime import datetime, timedelta
 
 st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", page_icon="🚀", initial_sidebar_state="expanded")
 
@@ -71,7 +71,7 @@ payout_data = {
     "YMAX": {"freq": "Weekly", "yield": 57.0},
 }
 
-# ==================== CATEGORY DESCRIPTIONS ====================
+# ==================== CATEGORY & HOLDING DESCRIPTIONS ====================
 category_descriptions = {
     "Core Stable Income": "Provides the largest and most reliable portion of monthly income using covered-call strategies on broad market indices. Acts as the defensive backbone of the portfolio.",
     "Quality Dividend Growth": "Focuses on high-quality companies with growing dividends and strong fundamentals. Delivers quarterly income while building long-term capital appreciation and inflation protection.",
@@ -79,7 +79,6 @@ category_descriptions = {
     "Aggressive High-Yield": "Tactical high-income slice using YieldMax option-income ETFs. Designed for short-term profit boosts and can be scaled up or down easily based on market volatility."
 }
 
-# ==================== HOLDING DESCRIPTIONS ====================
 holding_descriptions = {
     "JEPI": "JPMorgan Equity Premium Income ETF – Uses covered calls on S&P 500 stocks to generate high monthly income with moderate downside protection. **Role in portfolio**: Provides the largest, most stable monthly income stream and acts as the core of your defensive income strategy.",
     "JEPQ": "JPMorgan Nasdaq Equity Premium Income ETF – Covered call strategy on the Nasdaq-100 for higher monthly income with tech exposure. **Role in portfolio**: Adds growth-oriented monthly income while still offering downside cushion through options.",
@@ -184,7 +183,7 @@ if page == "📊 Portfolio Overview":
         monthly_expected = round(yearly_expected / 12, 0)
 
         st.markdown(f"### {cat}")
-        st.caption(category_descriptions[cat])   # ← NEW: Category description
+        st.caption(category_descriptions[cat])
 
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1: st.metric("Total Value", f"${total_value:,.0f}")
@@ -235,6 +234,8 @@ elif page == "📋 Holding Details":
     selected_ticker = st.selectbox("Select Holding", tickers)
     if selected_ticker:
         row = df[df["Ticker"] == selected_ticker].iloc[0]
+        target_amount = targets[selected_ticker]["amount"]
+        price = prices[selected_ticker]
 
         st.subheader("Description")
         st.write(holding_descriptions.get(selected_ticker, "No description available."))
@@ -252,6 +253,37 @@ elif page == "📋 Holding Details":
         }])
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
 
+        # ==================== NEW: PROJECTED FUTURE PAYOUT CHART ====================
+        st.subheader(f"📅 Projected Future Payouts for {selected_ticker}")
+        today = datetime(2026, 5, 20).date()
+        freq = payout_data[selected_ticker]["freq"]
+        annual_payout = target_amount * payout_data[selected_ticker]["yield"] / 100
+
+        dates = []
+        amounts = []
+        current = today + timedelta(days=7)
+
+        for i in range(12):  # next 12 payouts
+            if freq == "Weekly":
+                current += timedelta(days=7)
+                per_payout = round(annual_payout / 52, 0)
+            elif freq == "Monthly":
+                current = current.replace(day=15) + timedelta(days=30)
+                per_payout = round(annual_payout / 12, 0)
+            else:  # Quarterly
+                current += timedelta(days=90)
+                per_payout = round(annual_payout / 4, 0)
+
+            dates.append(current.strftime("%b %d, %Y"))
+            amounts.append(per_payout)
+
+        chart_df = pd.DataFrame({"Date": dates, "Projected Payout $": amounts})
+        fig = px.bar(chart_df, x="Date", y="Projected Payout $",
+                     title=f"Next 12 Projected Payouts – {selected_ticker}",
+                     color_discrete_sequence=["#1f6feb"])
+        fig.update_layout(xaxis_tickangle=-45)
+        st.plotly_chart(fig, use_container_width=True)
+
 elif page == "📊 Portfolio Combined":
     st.subheader("📊 Portfolio Combined View")
     st.dataframe(df, use_container_width=True, hide_index=True)
@@ -264,7 +296,7 @@ elif page == "💸 Reinvestment Strategy":
     **Allocation Rule**:
     - 60% → Quality Dividend Growth (SCHD + VIG)
     - 30% → Core Stable Income (JEPI)
-    - 10% → Tactical High-Risk Boost (YieldMax slice: NVDY, ULTY, CHPY, MRNY, YMAX)
+    - 10% → Tactical High-Risk Boost (YieldMax slice)
     """)
 
     monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="$%.0f")
@@ -278,7 +310,7 @@ elif page == "💸 Reinvestment Strategy":
     with col3:
         st.metric("Tactical High-Risk Boost (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
 
-    st.info("These amounts can be manually added to the respective holdings each month. The 10% tactical slice is perfect for short-term profit boosts when VIX is high.")
+    st.info("These amounts can be manually added to the respective holdings each month.")
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

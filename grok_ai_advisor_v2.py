@@ -226,14 +226,14 @@ if page == "Portfolio Overview":
         st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
         st.markdown("---")
 
-elif page == "💰 Income Projections":
+elif page == "Income Projections":
     st.subheader("Income Projections")
     total_annual = round(df["Est. Annual Payout"].str.replace("$","").str.replace(",","").astype(float).sum(), 0)
     total_monthly = round(total_annual / 12, 0)
     st.metric("**2026 Projected Annual Income**", f"${total_annual:,.0f}", f"Average Monthly: ${total_monthly:,.0f}")
     st.dataframe(df[["Ticker", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
 
-elif page == "📋 Holding Details":
+elif page == "Holding Details":
     st.subheader("Detailed Holding Information")
     selected_ticker = st.selectbox("Select Holding", tickers)
     if selected_ticker:
@@ -252,11 +252,11 @@ elif page == "📋 Holding Details":
         }])
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
 
-elif page == "📊 Portfolio Combined":
+elif page == "Portfolio Combined":
     st.subheader("Portfolio Combined View")
     st.dataframe(df, use_container_width=True, hide_index=True)
 
-elif page == "💸 Reinvestment Strategy":
+elif page == "Reinvestment Strategy":
     st.subheader("Monthly Surplus Reinvestment Strategy")
     st.write("""
     **Allocation Rule**:
@@ -326,7 +326,7 @@ elif page == "💸 Reinvestment Strategy":
     st.subheader("Quality Dividend Growth Holdings Tracker ($1k starter each)")
     st.dataframe(pd.DataFrame(st.session_state.quality_growth_tracker), use_container_width=True, hide_index=True)
 
-elif page == "🛡️ Guardrails & Alerts":
+elif page == "Guardrails & Alerts":
     st.subheader("Proactive Guardrails")
     st.info("All guardrails are currently GREEN. No immediate action required.")
 

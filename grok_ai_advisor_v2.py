@@ -26,6 +26,7 @@ page = st.sidebar.radio(
      "💰 Income Projections", 
      "📋 Holding Details",
      "📊 Portfolio Combined",
+     "💸 Reinvestment Strategy",
      "🛡️ Guardrails & Alerts"]
 )
 
@@ -68,6 +69,14 @@ payout_data = {
     "CHPY": {"freq": "Weekly", "yield": 46.0},
     "MRNY": {"freq": "Weekly", "yield": 71.0},
     "YMAX": {"freq": "Weekly", "yield": 57.0},
+}
+
+# ==================== CATEGORY DESCRIPTIONS ====================
+category_descriptions = {
+    "Core Stable Income": "Provides the largest and most reliable portion of monthly income using covered-call strategies on broad market indices. Acts as the defensive backbone of the portfolio.",
+    "Quality Dividend Growth": "Focuses on high-quality companies with growing dividends and strong fundamentals. Delivers quarterly income while building long-term capital appreciation and inflation protection.",
+    "Cash Buffer": "Ultra-safe short-term U.S. Treasuries that serve as liquidity reserve and emergency cash. Maintains stability and allows quick reallocation when opportunities arise.",
+    "Aggressive High-Yield": "Tactical high-income slice using YieldMax option-income ETFs. Designed for short-term profit boosts and can be scaled up or down easily based on market volatility."
 }
 
 # ==================== HOLDING DESCRIPTIONS ====================
@@ -175,6 +184,8 @@ if page == "📊 Portfolio Overview":
         monthly_expected = round(yearly_expected / 12, 0)
 
         st.markdown(f"### {cat}")
+        st.caption(category_descriptions[cat])   # ← NEW: Category description
+
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1: st.metric("Total Value", f"${total_value:,.0f}")
         with col2: st.metric("Portfolio %", f"{total_pct:.1f}%")
@@ -189,7 +200,6 @@ elif page == "💰 Income Projections":
     total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
     expected_monthly = round(total_annual / 12, 0)
 
-    # MONTHLY IS NOW FIRST (LEFTMOST)
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("**Average Projected Monthly Income**", f"${expected_monthly:,.0f}")
@@ -226,7 +236,6 @@ elif page == "📋 Holding Details":
     if selected_ticker:
         row = df[df["Ticker"] == selected_ticker].iloc[0]
 
-        # DESCRIPTION NOW AT THE VERY TOP
         st.subheader("Description")
         st.write(holding_descriptions.get(selected_ticker, "No description available."))
 
@@ -246,6 +255,30 @@ elif page == "📋 Holding Details":
 elif page == "📊 Portfolio Combined":
     st.subheader("📊 Portfolio Combined View")
     st.dataframe(df, use_container_width=True, hide_index=True)
+
+elif page == "💸 Reinvestment Strategy":
+    st.subheader("💸 Monthly Surplus Reinvestment Strategy")
+    st.write("""
+    **Goal**: Automatically roll over any unspent income each month to fight inflation, strengthen the core portfolio, and allow tactical short-term boosts.
+    
+    **Allocation Rule**:
+    - 60% → Quality Dividend Growth (SCHD + VIG)
+    - 30% → Core Stable Income (JEPI)
+    - 10% → Tactical High-Risk Boost (YieldMax slice: NVDY, ULTY, CHPY, MRNY, YMAX)
+    """)
+
+    monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="$%.0f")
+
+    st.subheader("Distribution for this month")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Quality Dividend Growth (60%)", f"${round(monthly_surplus * 0.60):,.0f}")
+    with col2:
+        st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
+    with col3:
+        st.metric("Tactical High-Risk Boost (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
+
+    st.info("These amounts can be manually added to the respective holdings each month. The 10% tactical slice is perfect for short-term profit boosts when VIX is high.")
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

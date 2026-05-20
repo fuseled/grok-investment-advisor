@@ -51,7 +51,6 @@ category_map = {
     "YMAX": "Aggressive High-Yield",
 }
 
-# Payout data
 payout_data = {
     "JEPI": {"freq": "Monthly", "yield": 8.4, "notes": "Covered calls"},
     "JEPQ": {"freq": "Monthly", "yield": 10.3, "notes": "Covered calls"},
@@ -129,82 +128,84 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
             st.metric("Current VIX", f"{current_vix}")
             st.metric("Liquidity Score", "94/100")
 
-        # ==================== NEW SUNBURST CHART (Categories + Holdings) ====================
-        st.subheader("📊 Portfolio Allocation by Category & Holding")
-        fig_sunburst = px.sunburst(
-            df,
-            path=['Category', 'Ticker'],
-            values='Current Value',
-            title="Hierarchical View: Category → Individual Holdings",
-            color='Category'
-        )
+        # Grok AI Evaluation
+        st.subheader("🤖 Grok AI Portfolio Evaluation")
+        aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
+        vix_comment = "High volatility — excellent premiums!" if current_vix > 28 else "Low volatility — premiums shrinking." if current_vix < 15 else "Normal volatility range."
+        slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add if desired." if aggressive_current < 4.0 else "Right on target."
+        st.info(f"**Overall Condition:** Healthy. VIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}\n\n**Recommendation:** No immediate action needed. Follow monthly surplus rule.")
+
+        # Sunburst Chart
+        st.subheader("📊 Current Portfolio Allocation")
+        fig_sunburst = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
         st.plotly_chart(fig_sunburst, use_container_width=True)
 
         # Category Subtotals
         st.subheader("📊 Portfolio by Strategy Category")
-        category_summary = df.groupby("Category").agg({
-            "Current Value": "sum",
-            "Current_Pct_Numeric": "sum"
-        }).round(2)
-        category_summary = category_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
-        st.dataframe(category_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), 
-                     use_container_width=True)
+        cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
+        cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
+        st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
 
-        # Holdings Breakdown
         st.subheader("Holdings Breakdown by Strategy Category")
-        st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], 
-                     use_container_width=True, hide_index=True)
+        st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], use_container_width=True, hide_index=True)
 
-        # ==================== DETAILED PAYOUTS SECTION ====================
+        # ==================== DETAILED PAYOUTS TABLE ====================
         st.header("💰 Detailed Payouts Section")
-
         payout_rows = []
-        total_annual_payout = 0
-
+        total_annual = 0
         for t in tickers:
-            target_amount = targets[t]["amount"]
-            yield_pct = payout_data[t]["yield"]
-            annual_payout = round(target_amount * (yield_pct / 100), 0)
-            total_annual_payout += annual_payout
-
-            monthly_payout = round(annual_payout / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual_payout / 4, 0)
-
+            amt = targets[t]["amount"]
+            yld = payout_data[t]["yield"]
+            ann = round(amt * yld / 100, 0)
+            total_annual += ann
+            mo = round(ann / 12, 0) if payout_data[t]["freq"] in ["Monthly","Weekly"] else round(ann / 4, 0)
             payout_rows.append({
                 "Ticker": t,
                 "Category": category_map[t],
                 "Frequency": payout_data[t]["freq"],
-                "Est. Annual Yield": f"{yield_pct}%",
-                "Est. Annual Payout": f"${annual_payout:,.0f}",
-                "Est. Monthly Payout": f"${monthly_payout:,.0f}",
+                "Est. Annual Yield": f"{yld}%",
+                "Est. Annual Payout": f"${ann:,.0f}",
+                "Est. Monthly Payout": f"${mo:,.0f}",
                 "Notes": payout_data[t]["notes"]
             })
-
         payout_df = pd.DataFrame(payout_rows)
-
         st.dataframe(payout_df, use_container_width=True, hide_index=True)
 
-        # ==================== NEW BAR CHART - MONTHLY PAYOUTS ====================
-        st.subheader("📈 Estimated Monthly Payouts by Ticker")
-        fig_bar = px.bar(
-            payout_df,
-            x="Ticker",
-            y="Est. Monthly Payout",
-            color="Category",
-            title="Monthly Payout Contribution by Holding",
-            text="Est. Monthly Payout",
-            height=500
+        # ==================== NEW 12-MONTH STACKED BAR GRAPH ====================
+        st.subheader("📈 Projected 12-Month Payout Schedule (Stacked by Holding)")
+        months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        stacked_data = []
+        for t in tickers:
+            monthly_payout = round(targets[t]["amount"] * payout_data[t]["yield"] / 100 / 12, 0)
+            for m in months:
+                stacked_data.append({
+                    "Month": m,
+                    "Ticker": t,
+                    "Category": category_map[t],
+                    "Monthly Payout": monthly_payout
+                })
+        stacked_df = pd.DataFrame(stacked_data)
+
+        fig_stacked = px.bar(
+            stacked_df,
+            x="Month",
+            y="Monthly Payout",
+            color="Ticker",
+            title="Projected Monthly Payouts Over 12 Months (Stacked by Holding)",
+            barmode="stack",
+            height=550
         )
-        fig_bar.update_traces(texttemplate="$%{text:,.0f}", textposition="outside")
-        st.plotly_chart(fig_bar, use_container_width=True)
+        fig_stacked.update_layout(xaxis_title="Month", yaxis_title="Projected Monthly Payout ($)")
+        st.plotly_chart(fig_stacked, use_container_width=True)
 
         # Summary metrics
         col_a, col_b, col_c = st.columns(3)
         with col_a:
-            st.metric("Total Projected Annual Payout", f"${total_annual_payout:,.0f}")
+            st.metric("Total Projected Annual Payout", f"${total_annual:,.0f}")
         with col_b:
-            st.metric("Blended Yield", f"{(total_annual_payout / TOTAL_CAPITAL * 100):.1f}%")
+            st.metric("Blended Yield", f"{(total_annual / TOTAL_CAPITAL * 100):.1f}%")
         with col_c:
-            st.metric("After-Tax (MFJ est.)", f"~${total_annual_payout - 34500:,.0f}")
+            st.metric("After-Tax (MFJ est.)", f"~${total_annual - 34500:,.0f}")
 
         st.caption("Note: YieldMax payouts are variable and often include high Return of Capital (ROC).")
 

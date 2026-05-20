@@ -156,6 +156,7 @@ df = pd.DataFrame(data)
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
+    # (unchanged)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -303,7 +304,6 @@ elif page == "💸 Reinvestment Strategy":
 
     monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="%.0f")
 
-    # ==================== GROK AI AGENT ====================
     st.subheader("🤖 Grok AI Agent – 30-Day Market Analysis & Recommendation")
     yieldmax_etfs = ["NVDY", "ULTY", "CHPY", "MRNY", "YMAX"]
     perf = {}
@@ -334,10 +334,18 @@ elif page == "💸 Reinvestment Strategy":
     with col2:
         st.metric(f"**Recommended ETF for surplus**", rec, reason)
 
-    # ==================== INTERACTIVE SURPLUS TABLE ====================
+    # ==================== PRE-FILLED SURPLUS TABLE ====================
     st.subheader("Surplus High-Yield Tracking Table")
     if "surplus_table" not in st.session_state:
-        st.session_state.surplus_table = pd.DataFrame(columns=["Holding", "Shares", "Total Value $", "Risk Rating", "Recommendation"])
+        # Pre-fill with $1,000 in each high-yield ETF
+        initial_data = [
+            {"Holding": "NVDY", "Shares": 35, "Total Value $": 1000, "Risk Rating": "🟡 Medium", "Recommendation": "Keep"},
+            {"Holding": "ULTY", "Shares": 32, "Total Value $": 1000, "Risk Rating": "🟡 Medium", "Recommendation": "Keep"},
+            {"Holding": "CHPY", "Shares": 38, "Total Value $": 1000, "Risk Rating": "🟡 Medium", "Recommendation": "Keep"},
+            {"Holding": "MRNY", "Shares": 28, "Total Value $": 1000, "Risk Rating": "🟡 Medium", "Recommendation": "Keep"},
+            {"Holding": "YMAX", "Shares": 33, "Total Value $": 1000, "Risk Rating": "🟡 Medium", "Recommendation": "Keep"}
+        ]
+        st.session_state.surplus_table = pd.DataFrame(initial_data)
 
     edited_df = st.data_editor(
         st.session_state.surplus_table,

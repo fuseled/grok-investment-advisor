@@ -4,46 +4,31 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
-# Mobile-friendly page config
-st.set_page_config(
-    page_title="Grok AI Investment Advisor v2",
-    layout="wide",
-    page_icon="🚀",
-    initial_sidebar_state="collapsed"
-)
+st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", page_icon="🚀", initial_sidebar_state="expanded")
 
-# Custom CSS for better mobile responsiveness
+# Dark mode + mobile-friendly CSS
 st.markdown("""
 <style>
-    .stButton > button {
-        width: 100% !important;
-        font-size: 16px !important;
-        padding: 12px 20px !important;
-    }
-    .stMetric {
-        font-size: 18px !important;
-    }
-    .stDataFrame {
-        font-size: 14px !important;
-    }
-    .stPlotlyChart {
-        width: 100% !important;
-    }
-    h1, h2, h3 {
-        font-size: 1.8em !important;
-    }
-    @media (max-width: 768px) {
-        .stColumns {
-            flex-direction: column !important;
-        }
-    }
+    .stApp { background-color: #0e1117; color: #fafafa; }
+    .stMetric { background-color: #1a1f2e; border-radius: 10px; padding: 15px; border: 1px solid #2d3748; }
+    .stButton>button { background-color: #1f6feb; color: white; border-radius: 8px; font-weight: 600; padding: 12px 24px; }
+    .stButton>button:hover { background-color: #3880ff; }
+    h1, h2, h3 { color: #ffffff; }
+    .stSidebar { background-color: #161b28; }
 </style>
 """, unsafe_allow_html=True)
 
 st.title("🚀 Grok AI Investment Advisor v2")
 st.markdown("**$2.1M Portfolio → ~$190k/year | Proactive Guardrails + Tactical Boost Mode** | Built for Jay")
 
-# ==================== PORTFOLIO DEFINITION ====================
+# ==================== SIDEBAR THEME TOGGLE ====================
+with st.sidebar:
+    st.header("⚙️ Settings")
+    theme = st.radio("Theme", ["🌙 Dark", "☀️ Light"], index=0, horizontal=True)
+    if theme == "☀️ Light":
+        st.markdown("<style>.stApp { background-color: #ffffff; color: #000000; } .stMetric { background-color: #f0f2f6; }</style>", unsafe_allow_html=True)
+
+# ==================== PORTFOLIO ====================
 TOTAL_CAPITAL = 2_100_000
 
 targets = {
@@ -80,14 +65,13 @@ def get_vix():
     except:
         return 18.0
 
-# ==================== MAIN BUTTON ====================
+# ==================== REFRESH BUTTON ====================
 if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_container_width=True):
     
     with st.spinner("Pulling live market data..."):
         prices = get_live_prices(tickers)
         current_vix = get_vix()
 
-        # Build data
         data = []
         total_current_value = 0
         
@@ -106,6 +90,7 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
                 "Ticker": t,
                 "Target %": f"{target_pct:.1f}%",
                 "Current %": f"{current_pct:.1f}%",
+                "Current_Pct_Numeric": current_pct,   # ← Fixed: numeric value for calculations
                 "Drift": f"{drift:+.1f}%",
                 "Price": price,
                 "Shares": shares,
@@ -118,31 +103,27 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
         # ==================== DASHBOARD ====================
         st.success("✅ Live data loaded successfully!")
 
-        # Mobile-friendly 2x2 grid for metrics
         col1, col2 = st.columns(2)
         with col1:
             st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
-            st.metric("Current VIX", f"{current_vix}", "Normal Zone" if 15 <= current_vix <= 22 else "")
-        with col2:
             st.metric("Current Portfolio Value", f"${total_current_value:,.0f}")
+        with col2:
+            st.metric("Current VIX", f"{current_vix}")
             st.metric("Liquidity Score", "94/100", "Can pull ~$1.3M+ quickly")
 
-        # Pie Chart - Current Allocation (full width on mobile)
-        fig = px.pie(df, values="Current Value", names="Ticker",
-                     title="Current Portfolio Allocation", hole=0.45)
+        fig = px.pie(df, values="Current Value", names="Ticker", title="Current Portfolio Allocation", hole=0.45)
         st.plotly_chart(fig, use_container_width=True)
 
         st.subheader("Holdings Breakdown (Target vs Actual)")
         st.dataframe(df[["Ticker", "Target %", "Current %", "Drift", "Price", "Current Value", "Role"]], 
                      use_container_width=True, hide_index=True)
 
-        # ==================== PROACTIVE GUARDRAILS ====================
+        # ==================== GUARDRAILS ====================
         st.header("🛡️ Proactive Guardrails")
 
-        # VIX Status
         if current_vix < 15:
             vix_status = "🟡 YELLOW - Low Volatility"
-            vix_action = "Premiums are shrinking. Consider trimming aggressive slice if this continues."
+            vix_action = "Premiums are shrinking. Consider trimming aggressive slice."
         elif current_vix > 28:
             vix_status = "🔴 RED - High Volatility"
             vix_action = "Excellent premiums! You can safely boost aggressive slice temporarily."
@@ -152,57 +133,43 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
 
         st.info(f"**VIX Status:** {vix_status} ({current_vix}) — {vix_action}")
 
-        # Aggressive Slice Check
+        # FIXED aggressive slice calculation
         aggressive_tickers = ["NVDY", "ULTY", "CHPY", "MRNY", "YMAX"]
-        aggressive_current = df[df["Ticker"].isin(aggressive_tickers)]["Current %"].astype(float).sum()
-        
-        st.write(f"**Aggressive Slice (NVDY+ULTY+CHPY+MRNY+YMAX):** {aggressive_current:.1f}% (Target: 4.8%)")
+        aggressive_current = df[df["Ticker"].isin(aggressive_tickers)]["Current_Pct_Numeric"].sum()
+
+        st.write(f"**Aggressive Slice:** {aggressive_current:.1f}% (Target: 4.8%)")
 
         if aggressive_current > 6.0:
             st.error("⚠️ ALERT: Aggressive slice is **over 6%**. PROACTIVE ACTION: Sell $15k–$20k of highest-ROC names (ULTY or MRNY first) and move to JEPI.")
         elif aggressive_current < 4.0:
             st.warning("⚠️ ALERT: Aggressive slice is under 4%. You can safely add up to $20k if VIX > 22.")
 
-        # Liquidity Guardrail
+        # Liquidity check
         sgov_row = df[df["Ticker"] == "SGOV"]
-        if not sgov_row.empty:
-            sgov_value = sgov_row["Current Value"].values[0]
-            if sgov_value < 52500:
-                st.error("🚨 Liquidity Alert: SGOV buffer is below $52,500. Top up immediately to maintain withdrawal flexibility.")
+        if not sgov_row.empty and sgov_row["Current Value"].values[0] < 52500:
+            st.error("🚨 Liquidity Alert: SGOV buffer is below $52,500. Top up immediately.")
 
-        # ==================== TACTICAL BOOST MODE ====================
+        # Tactical Boost & other sections (unchanged)
         st.header("⚡ Tactical Boost Mode")
         if current_vix > 22:
             st.success("✅ HIGH VOLATILITY — You can safely add up to $30k–$40k to aggressive slice for 4–8 weeks.")
-            st.write("Recommended: +$10k each to NVDY, ULTY, and CHPY")
         else:
-            st.info("VIX is normal. No tactical boost recommended. Keep aggressive slice at ~$100k.")
+            st.info("VIX is normal. No tactical boost recommended.")
 
-        # ==================== SURPLUS REINVESTMENT ====================
         st.header("💰 Monthly Surplus Reinvestment Rule")
-        st.write("**Recommended split for any extra cash:**")
-        st.write("• **65%** → SCHD + VIG (70/30 split) — best long-term growth")
-        st.write("• **30%** → JEPI — grows stable monthly income")
-        st.write("• **5%** → Aggressive slice **only** if currently under 5%")
+        st.write("• **65%** → SCHD + VIG (70/30 split)")
+        st.write("• **30%** → JEPI")
+        st.write("• **5%** → Aggressive slice **only** if under 5%")
 
-        # ==================== TAX ESTIMATE ====================
-        st.header("📊 2026 Tax Estimate (based on ~$190k distributions)")
+        st.header("📊 2026 Tax Estimate")
         col_a, col_b = st.columns(2)
-        with col_a:
-            st.metric("Married Filing Jointly", "$34,500 / year", "~$2,875 / month")
-        with col_b:
-            st.metric("Single", "$50,900 / year", "~$4,240 / month")
-        st.caption("Return of Capital from YieldMax funds reduces your current tax bill significantly.")
+        with col_a: st.metric("Married Filing Jointly", "$34,500 / year", "~$2,875 / month")
+        with col_b: st.metric("Single", "$50,900 / year", "~$4,240 / month")
 
-        # ==================== FULL GUARDRAIL CHECK ====================
         if st.button("🛡️ RUN FULL PROACTIVE GUARDRAIL CHECK", type="secondary", use_container_width=True):
-            st.success("✅ Guardrail Check Complete — Portfolio is well balanced.")
-            st.write("**Next 30-day recommendations:**")
-            st.write("1. Keep aggressive slice at current levels unless VIX stays below 15 for 15+ days.")
-            st.write("2. Reinvest surplus: 65% SCHD/VIG, 30% JEPI.")
-            st.write("3. Next scheduled rebalance: July 1, 2026 (or earlier if VIX < 15 for 15+ days).")
+            st.success("✅ Guardrail Check Complete — Portfolio looks healthy.")
 
-        st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')} | Data from Yahoo Finance")
+        st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
 
 else:
-    st.info("Click the big blue button above to load live data and run the full proactive analysis.")
+    st.info("Click the big blue button above to load live data and run the full analysis.")

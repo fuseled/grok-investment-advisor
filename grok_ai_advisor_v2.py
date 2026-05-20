@@ -58,16 +58,16 @@ category_map = {
 }
 
 payout_data = {
-    "JEPI": {"freq": "Monthly", "yield": 8.4, "typical_ex": "1st of month", "typical_pay": "5th of month"},
-    "JEPQ": {"freq": "Monthly", "yield": 10.3, "typical_ex": "1st of month", "typical_pay": "5th of month"},
-    "SCHD": {"freq": "Quarterly", "yield": 3.3, "typical_ex": "Mar/Jun/Sep/Dec ~25th", "typical_pay": "~30th"},
-    "VIG":  {"freq": "Quarterly", "yield": 1.6, "typical_ex": "Mar/Jun/Sep/Dec ~27th", "typical_pay": "~31st"},
-    "SGOV": {"freq": "Monthly", "yield": 4.5, "typical_ex": "1st of month", "typical_pay": "5-6th of month"},
-    "NVDY": {"freq": "Weekly", "yield": 60.0, "typical_ex": "Tue/Wed", "typical_pay": "Next day"},
-    "ULTY": {"freq": "Weekly", "yield": 65.0, "typical_ex": "Tue/Wed", "typical_pay": "Next day"},
-    "CHPY": {"freq": "Weekly", "yield": 46.0, "typical_ex": "Tue/Wed", "typical_pay": "Next day"},
-    "MRNY": {"freq": "Weekly", "yield": 71.0, "typical_ex": "Tue/Wed", "typical_pay": "Next day"},
-    "YMAX": {"freq": "Weekly", "yield": 57.0, "typical_ex": "Tue/Wed", "typical_pay": "Next day"},
+    "JEPI": {"freq": "Monthly", "yield": 8.4},
+    "JEPQ": {"freq": "Monthly", "yield": 10.3},
+    "SCHD": {"freq": "Quarterly", "yield": 3.3},
+    "VIG":  {"freq": "Quarterly", "yield": 1.6},
+    "SGOV": {"freq": "Monthly", "yield": 4.5},
+    "NVDY": {"freq": "Weekly", "yield": 60.0},
+    "ULTY": {"freq": "Weekly", "yield": 65.0},
+    "CHPY": {"freq": "Weekly", "yield": 46.0},
+    "MRNY": {"freq": "Weekly", "yield": 71.0},
+    "YMAX": {"freq": "Weekly", "yield": 57.0},
 }
 
 tickers = list(targets.keys())
@@ -127,7 +127,7 @@ df = pd.DataFrame(data)
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
-    # (Your existing overview code - kept short for space)
+    # 4 bubbles
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -140,53 +140,85 @@ if page == "📊 Portfolio Overview":
     slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
     st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}")
 
-    # Sunburst and category tables (unchanged)
+    st.subheader("📊 Current Portfolio Allocation")
+    fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("📊 Portfolio by Strategy Category")
+    cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
+    cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
+    st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
+
+    # Holdings Breakdown by Category (separate headers)
+    st.subheader("Holdings Breakdown by Strategy Category")
+    for cat in ["Core Stable Income", "Quality Dividend Growth", "Cash Buffer", "Aggressive High-Yield"]:
+        cat_df = df[df["Category"] == cat].copy()
+        if cat_df.empty:
+            continue
+        total_value = cat_df["Current Value"].sum()
+        total_pct = cat_df["Current_Pct_Numeric"].sum()
+        st.markdown(f"### {cat}")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Total Value", f"${total_value:,.0f}")
+        with col2:
+            st.metric("Portfolio %", f"{total_pct:.1f}%")
+        st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
+        st.markdown("---")
 
 elif page == "💰 Income Projections":
-    # (Your income projections content)
+    total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
+    col1, col2 = st.columns(2)
+    with col1: st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col2: st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
 
-    pass
+    st.subheader("Detailed Payouts Schedule")
+    payout_rows = []
+    for t in tickers:
+        annual = round(targets[t]["amount"] * payout_data[t]["yield"] / 100, 0)
+        monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
+        if payout_data[t]["freq"] == "Weekly":
+            schedule = "Weekly (typically Fridays)"
+        elif payout_data[t]["freq"] == "Monthly":
+            schedule = "Monthly (usually mid-month)"
+        else:
+            schedule = "Mar 15, Jun 15, Sep 15, Dec 15"
+        payout_rows.append({
+            "Ticker": t,
+            "Category": category_map[t],
+            "Frequency": payout_data[t]["freq"],
+            "Est. Annual Yield": f"{payout_data[t]['yield']}%",
+            "Est. Annual Payout": f"${annual:,.0f}",
+            "Est. Monthly Payout": f"${monthly:,.0f}",
+            "Payout Schedule": schedule
+        })
+    st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
 
 elif page == "📋 Holding Details":
     st.subheader("📋 Detailed Holding Information")
     selected_ticker = st.selectbox("Select Holding", tickers)
     if selected_ticker:
         row = df[df["Ticker"] == selected_ticker].iloc[0]
-        price = prices[selected_ticker]
-        target_amount = targets[selected_ticker]["amount"]
-        shares = round(target_amount / price, 2)
-        market_value = round(shares * price, 2)
-        invested = target_amount
-        total_return = round(market_value - invested, 2)
-        total_return_pct = round((market_value / invested - 1) * 100, 2)
-
-        st.subheader(f"📈 {selected_ticker} Income Summary")
-        col_ytd, col_mtd = st.columns(2)
-        with col_ytd: st.metric("YTD Received / Expected", "$320 / $1,250", "25.6%")
-        with col_mtd: st.metric("MTD Received / Expected", "$85 / $208", "40.9%")
-
-        st.markdown(f"### {selected_ticker} — ${price}")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.metric("Market Value", f"${market_value:,.0f}")
-            st.metric("Shares", f"{shares:,.0f}")
-        with col_b:
-            st.metric("Total Return", f"${total_return:,.0f} ({total_return_pct}%)")
-            st.metric("Est. Annual Dividends", f"${round(target_amount * payout_data[selected_ticker]['yield']/100, 0):,.0f}")
-
-        # NEW: Payout Schedule for this holding
-        st.subheader("Payout Schedule & History")
-        pd_info = payout_data[selected_ticker]
-        st.write(f"**Frequency:** {pd_info['freq']}")
-        st.write(f"**Typical Ex-Date:** {pd_info.get('typical_ex', 'Varies')}")
-        st.write(f"**Typical Pay Date:** {pd_info.get('typical_pay', 'Varies')}")
-        st.write(f"**Est. Amount per Payout:** ${round(target_amount * pd_info['yield'] / 100 / 12 if pd_info['freq'] in ['Monthly','Weekly'] else target_amount * pd_info['yield'] / 100 / 4, 0):,.0f}")
-
-        st.caption("Note: Exact dates are announced monthly/weekly. YieldMax ETFs pay weekly.")
+        st.subheader(f"{selected_ticker} Detailed Table")
+        detail_df = pd.DataFrame([{
+            "Ticker": row["Ticker"],
+            "Category": row["Category"],
+            "Current Value": f"${row['Current Value']:,.0f}",
+            "Portfolio %": row["Current %"],
+            "Est. Annual Yield": row["Est. Annual Yield"],
+            "Est. Annual Payout": row["Est. Annual Payout"],
+            "Est. Monthly Payout": row["Est. Monthly Payout"],
+            "Frequency": row["Frequency"],
+        }])
+        st.dataframe(detail_df, use_container_width=True, hide_index=True)
 
 elif page == "📊 Portfolio Combined":
-    st.subheader("📊 Portfolio Combined View")
-    st.dataframe(df, use_container_width=True, hide_index=True)
+    st.subheader("📊 Portfolio Combined View - All Holdings Organized by Category")
+    st.dataframe(
+        df[["Category", "Ticker", "Current Value", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]],
+        use_container_width=True,
+        hide_index=True
+    )
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

@@ -16,19 +16,13 @@ st.markdown("""
     h1, h2, h3 { color: #ffffff; }
     .stSidebar { background-color: #161b28; }
     .month-box { background-color: #1a1f2e; padding: 15px; border-radius: 10px; border: 1px solid #2d3748; text-align: center; }
-    .top-ticker {
-        position: fixed; top: 0; left: 0; right: 0; background: #0e1117; 
-        border-bottom: 3px solid #1f6feb; padding: 10px 20px; z-index: 1000;
-        display: flex; justify-content: space-around; align-items: center;
-        font-size: 1.05em; box-shadow: 0 2px 10px rgba(0,0,0,0.4);
-    }
+    .category-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.9em; font-weight: 600; display: inline-block; }
 </style>
 """, unsafe_allow_html=True)
 
 # ==================== SIDEBAR ====================
 st.sidebar.title("🚀 Grok AI Advisor")
 auto_refresh = st.sidebar.checkbox("🔄 Auto Refresh Every 60 Seconds", value=True)
-
 page = st.sidebar.radio(
     "Navigate",
     ["📊 Portfolio Overview", 
@@ -40,7 +34,7 @@ page = st.sidebar.radio(
 st.title("Grok AI Investment Advisor v2")
 st.markdown("**$2.1M Portfolio → ~$190k/year** | Built for Jay")
 
-# ==================== DATA ====================
+# ==================== PORTFOLIO DATA ====================
 TOTAL_CAPITAL = 2_100_000
 
 targets = {
@@ -63,6 +57,20 @@ category_map = {
     "NVDY": "Aggressive High-Yield", "ULTY": "Aggressive High-Yield",
     "CHPY": "Aggressive High-Yield", "MRNY": "Aggressive High-Yield",
     "YMAX": "Aggressive High-Yield",
+}
+
+# Short summaries for each holding
+holding_summaries = {
+    "JEPI": "JPMorgan Equity Premium Income ETF – S&P 500 covered call strategy that generates high monthly income while providing some downside protection.",
+    "SCHD": "Schwab U.S. Dividend Equity ETF – Focuses on high-quality U.S. companies with strong dividend growth and financial health.",
+    "JEPQ": "JPMorgan Nasdaq Equity Premium Income ETF – Nasdaq-100 covered call strategy for high monthly income from tech-heavy index.",
+    "VIG": "Vanguard Dividend Appreciation ETF – Tracks companies that have consistently increased their dividends for many years.",
+    "SGOV": "iShares 0-3 Month Treasury Bond ETF – Ultra-safe short-term U.S. Treasury bills for liquidity and cash buffer.",
+    "NVDY": "YieldMax NVDA Option Income Strategy ETF – High-yield weekly option income strategy on NVIDIA stock.",
+    "ULTY": "YieldMax Ultra Option Income Strategy ETF – Basket of high-volatility stocks using options to generate ultra-high weekly income.",
+    "CHPY": "YieldMax Semiconductor Portfolio Option Income ETF – Diversified semiconductor stocks with covered call strategy.",
+    "MRNY": "YieldMax MRNA Option Income Strategy ETF – High-yield option income on Moderna (biotech volatility play).",
+    "YMAX": "YieldMax Universe Fund of Option Income ETFs – Diversified fund-of-funds that holds many other YieldMax ETFs.",
 }
 
 payout_data = {
@@ -102,7 +110,6 @@ def get_vix():
 prices = get_live_prices(tickers)
 current_vix = get_vix()
 
-# Build main dataframe
 data = []
 total_current_value = 0
 for t in tickers:
@@ -129,9 +136,8 @@ for t in tickers:
 
 df = pd.DataFrame(data)
 
+# ==================== TOP TICKER BAR ====================
 total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
-
-# ==================== PERMANENT TOP TICKER ====================
 ticker_html = f"""
 <div style="position:fixed;top:0;left:0;right:0;background:#0e1117;border-bottom:3px solid #1f6feb;padding:8px 20px;z-index:1000;display:flex;justify-content:space-around;align-items:center;font-size:1.05em;box-shadow:0 2px 10px rgba(0,0,0,0.4);">
     <div><strong>VIX</strong><br>{current_vix}</div>
@@ -170,11 +176,10 @@ if page == "📊 Portfolio Overview":
     st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], use_container_width=True, hide_index=True)
 
 elif page == "💰 Income Projections":
+    total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
     col1, col2 = st.columns(2)
-    with col1:
-        st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
-    with col2:
-        st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
+    with col1: st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col2: st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
 
     st.subheader("Detailed Payouts Schedule")
     payout_rows = []
@@ -191,56 +196,50 @@ elif page == "💰 Income Projections":
         })
     st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
 
-    with st.expander("📆 2026 Monthly Payout Calendar", expanded=True):
-        st.subheader("2026 Monthly Payout Calendar")
-        months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-        quarterly_months = ["Mar","Jun","Sep","Dec"]
-        cols = st.columns(4)
-        for i, month in enumerate(months):
-            with cols[i % 4]:
-                month_payout = 0
-                paying = []
-                for t in tickers:
-                    annual = targets[t]["amount"] * payout_data[t]["yield"] / 100
-                    if payout_data[t]["freq"] in ["Monthly", "Weekly"]:
-                        month_payout += annual / 12
-                        paying.append(t)
-                    elif payout_data[t]["freq"] == "Quarterly" and month in quarterly_months:
-                        month_payout += annual / 4
-                        paying.append(t)
-                month_payout = round(month_payout, 0)
-                st.markdown(f"""
-                <div class="month-box">
-                    <strong>{month}</strong><br>
-                    <span style="font-size: 1.5em; color:#1f6feb;">${month_payout:,.0f}</span><br>
-                    <small>{', '.join(paying[:3]) if paying else '—'}</small>
-                </div>
-                """, unsafe_allow_html=True)
-
 elif page == "📋 Holding Details":
     st.subheader("📋 Detailed Holding Information")
     selected = st.selectbox("Select a holding", tickers)
+
     if selected:
         price = prices[selected]
         target_amount = targets[selected]["amount"]
         shares = round(target_amount / price, 2)
-        market_value = round(shares * price, 2)
-        st.markdown(f"### {selected} — ${price:.2f}")
-        col_a, col_b = st.columns(2)
-        with col_a:
-            st.metric("Market Value", f"${market_value:,.0f}")
-            st.metric("Shares", f"{shares:,.0f}")
-        with col_b:
-            st.metric("Est. Annual Dividends", f"${round(target_amount * payout_data[selected]['yield']/100, 0):,.0f}")
-            st.metric("Frequency", payout_data[selected]["freq"])
+        current_value = round(shares * price, 2)
+        avg_cost = round(target_amount / shares, 2)
+        unrealized_gain = round(current_value - target_amount, 2)
+        unrealized_pct = round((current_value / target_amount - 1) * 100, 2)
+
+        # Category color
+        cat = category_map[selected]
+        color = "#1f6feb" if "Core" in cat else "#22c55e" if "Quality" in cat else "#eab308" if "Cash" in cat else "#ef4444"
+
+        st.markdown(f"""
+        <h3>{selected} — ${price:.2f}</h3>
+        <span style="background:{color}; color:white; padding:4px 14px; border-radius:20px; font-size:0.9em;">{cat}</span>
+        """, unsafe_allow_html=True)
+
+        st.write(holding_summaries.get(selected, "No summary available."))
+
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            st.metric("Purchased Value / Share", f"${avg_cost:.2f}")
+        with col2:
+            st.metric("Current Price", f"${price:.2f}")
+        with col3:
+            st.metric("Total Purchase Cost", f"${target_amount:,.0f}")
+        with col4:
+            st.metric("Current Total Value", f"${current_value:,.0f}")
+        with col5:
+            st.metric("Unrealized Gain", f"${unrealized_gain:,.0f} ({unrealized_pct}%)", 
+                      delta=f"{unrealized_pct:.1f}%")
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")
     st.info("All guardrails are currently **GREEN**. No immediate action required.")
 
-st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')} | Auto-refresh: {'ON' if auto_refresh else 'OFF'}")
+st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
 
-# Auto Refresh
+# Auto-refresh
 if auto_refresh:
     time.sleep(60)
     st.rerun()

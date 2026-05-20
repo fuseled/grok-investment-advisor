@@ -15,8 +15,7 @@ st.markdown("""
     .stButton>button { background-color: #1f6feb; color: white; border-radius: 8px; font-weight: 600; padding: 14px 28px; }
     h1, h2, h3 { color: #ffffff; }
     .stSidebar { background-color: #161b28; }
-    .month-box { background-color: #1a1f2e; padding: 15px; border-radius: 10px; border: 1px solid #2d3748; text-align: center; }
-    .category-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.9em; font-weight: 600; display: inline-block; }
+    .month-box { background-color: #1a1f2e; padding: 12px; border-radius: 10px; border: 1px solid #2d3748; text-align: center; font-size: 0.95em; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -57,20 +56,6 @@ category_map = {
     "NVDY": "Aggressive High-Yield", "ULTY": "Aggressive High-Yield",
     "CHPY": "Aggressive High-Yield", "MRNY": "Aggressive High-Yield",
     "YMAX": "Aggressive High-Yield",
-}
-
-# Short summaries for each holding
-holding_summaries = {
-    "JEPI": "JPMorgan Equity Premium Income ETF – S&P 500 covered call strategy that generates high monthly income while providing some downside protection.",
-    "SCHD": "Schwab U.S. Dividend Equity ETF – Focuses on high-quality U.S. companies with strong dividend growth and financial health.",
-    "JEPQ": "JPMorgan Nasdaq Equity Premium Income ETF – Nasdaq-100 covered call strategy for high monthly income from tech-heavy index.",
-    "VIG": "Vanguard Dividend Appreciation ETF – Tracks companies that have consistently increased their dividends for many years.",
-    "SGOV": "iShares 0-3 Month Treasury Bond ETF – Ultra-safe short-term U.S. Treasury bills for liquidity and cash buffer.",
-    "NVDY": "YieldMax NVDA Option Income Strategy ETF – High-yield weekly option income strategy on NVIDIA stock.",
-    "ULTY": "YieldMax Ultra Option Income Strategy ETF – Basket of high-volatility stocks using options to generate ultra-high weekly income.",
-    "CHPY": "YieldMax Semiconductor Portfolio Option Income ETF – Diversified semiconductor stocks with covered call strategy.",
-    "MRNY": "YieldMax MRNA Option Income Strategy ETF – High-yield option income on Moderna (biotech volatility play).",
-    "YMAX": "YieldMax Universe Fund of Option Income ETFs – Diversified fund-of-funds that holds many other YieldMax ETFs.",
 }
 
 payout_data = {
@@ -136,7 +121,7 @@ for t in tickers:
 
 df = pd.DataFrame(data)
 
-# ==================== TOP TICKER BAR ====================
+# ==================== TOP TICKER ====================
 total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
 ticker_html = f"""
 <div style="position:fixed;top:0;left:0;right:0;background:#0e1117;border-bottom:3px solid #1f6feb;padding:8px 20px;z-index:1000;display:flex;justify-content:space-around;align-items:center;font-size:1.05em;box-shadow:0 2px 10px rgba(0,0,0,0.4);">
@@ -151,6 +136,7 @@ st.markdown(ticker_html, unsafe_allow_html=True)
 
 # ==================== PAGE CONTENT ====================
 if page == "📊 Portfolio Overview":
+    # (4 bubbles, Grok evaluation, sunburst, category table, holdings breakdown - unchanged)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${total_current_value:,.0f}")
@@ -178,8 +164,10 @@ if page == "📊 Portfolio Overview":
 elif page == "💰 Income Projections":
     total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
     col1, col2 = st.columns(2)
-    with col1: st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
-    with col2: st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
+    with col1:
+        st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col2:
+        st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
 
     st.subheader("Detailed Payouts Schedule")
     payout_rows = []
@@ -209,7 +197,6 @@ elif page == "📋 Holding Details":
         unrealized_gain = round(current_value - target_amount, 2)
         unrealized_pct = round((current_value / target_amount - 1) * 100, 2)
 
-        # Category color
         cat = category_map[selected]
         color = "#1f6feb" if "Core" in cat else "#22c55e" if "Quality" in cat else "#eab308" if "Cash" in cat else "#ef4444"
 
@@ -218,20 +205,31 @@ elif page == "📋 Holding Details":
         <span style="background:{color}; color:white; padding:4px 14px; border-radius:20px; font-size:0.9em;">{cat}</span>
         """, unsafe_allow_html=True)
 
-        st.write(holding_summaries.get(selected, "No summary available."))
-
         col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
-            st.metric("Purchased Value / Share", f"${avg_cost:.2f}")
-        with col2:
-            st.metric("Current Price", f"${price:.2f}")
-        with col3:
-            st.metric("Total Purchase Cost", f"${target_amount:,.0f}")
-        with col4:
-            st.metric("Current Total Value", f"${current_value:,.0f}")
-        with col5:
-            st.metric("Unrealized Gain", f"${unrealized_gain:,.0f} ({unrealized_pct}%)", 
-                      delta=f"{unrealized_pct:.1f}%")
+        with col1: st.metric("Purchased Value / Share", f"${avg_cost:.2f}")
+        with col2: st.metric("Current Price", f"${price:.2f}")
+        with col3: st.metric("Total Purchase Cost", f"${target_amount:,.0f}")
+        with col4: st.metric("Current Total Value", f"${current_value:,.0f}")
+        with col5: st.metric("Unrealized Gain", f"${unrealized_gain:,.0f} ({unrealized_pct}%)")
+
+        # NEW: Payout Calendar for this single holding
+        st.subheader(f"Payout Calendar for {selected}")
+        months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        quarterly_months = ["Mar","Jun","Sep","Dec"]
+        cols = st.columns(4)
+        for i, month in enumerate(months):
+            with cols[i % 4]:
+                month_payout = 0
+                if payout_data[selected]["freq"] in ["Monthly", "Weekly"]:
+                    month_payout = round(targets[selected]["amount"] * payout_data[selected]["yield"] / 100 / 12, 0)
+                elif payout_data[selected]["freq"] == "Quarterly" and month in quarterly_months:
+                    month_payout = round(targets[selected]["amount"] * payout_data[selected]["yield"] / 100 / 4, 0)
+                st.markdown(f"""
+                <div class="month-box">
+                    <strong>{month}</strong><br>
+                    <span style="font-size: 1.4em; color:#1f6feb;">${month_payout:,.0f}</span>
+                </div>
+                """, unsafe_allow_html=True)
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

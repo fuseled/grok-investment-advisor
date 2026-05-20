@@ -149,7 +149,6 @@ df = pd.DataFrame(data)
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
-    # ... (unchanged - kept exactly as before)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -235,6 +234,7 @@ elif page == "📋 Holding Details":
     selected_ticker = st.selectbox("Select Holding", tickers)
     if selected_ticker:
         row = df[df["Ticker"] == selected_ticker].iloc[0]
+        target_amount = targets[selected_ticker]["amount"]
 
         st.subheader("Description")
         st.write(holding_descriptions.get(selected_ticker, "No description available."))
@@ -252,14 +252,16 @@ elif page == "📋 Holding Details":
         }])
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
 
+        # ==================== UPDATED PAYOUT CHART ====================
         st.subheader(f"📅 Projected Future Payouts for {selected_ticker}")
         today = datetime(2026, 5, 20).date()
         freq = payout_data[selected_ticker]["freq"]
-        annual_payout = targets[selected_ticker]["amount"] * payout_data[selected_ticker]["yield"] / 100
+        annual_payout = target_amount * payout_data[selected_ticker]["yield"] / 100
 
         dates = []
         amounts = []
         current = today + timedelta(days=7)
+
         for i in range(12):
             if freq == "Weekly":
                 current += timedelta(days=7)
@@ -274,8 +276,28 @@ elif page == "📋 Holding Details":
             amounts.append(per_payout)
 
         chart_df = pd.DataFrame({"Date": dates, "Projected Payout $": amounts})
-        fig = px.bar(chart_df, x="Date", y="Projected Payout $", title=f"Next 12 Projected Payouts – {selected_ticker}", color_discrete_sequence=["#1f6feb"])
-        fig.update_layout(xaxis_tickangle=-45)
+
+        fig = px.bar(
+            chart_df, 
+            x="Date", 
+            y="Projected Payout $",
+            title=f"Next 12 Projected Payouts – {selected_ticker}",
+            color_discrete_sequence=["#1f6feb"],
+            text="Projected Payout $"
+        )
+
+        fig.update_traces(
+            texttemplate="$%{y:,.0f}",
+            textposition="outside",
+            width=0.5          # ← 50% bar width (thinner bars)
+        )
+
+        fig.update_layout(
+            xaxis_tickangle=-45,
+            bargap=0.4,        # extra spacing between bars
+            height=480
+        )
+
         st.plotly_chart(fig, use_container_width=True)
 
 elif page == "📊 Portfolio Combined":
@@ -293,13 +315,7 @@ elif page == "💸 Reinvestment Strategy":
     - 10% → Tactical High-Risk Boost (YieldMax slice: NVDY, ULTY, CHPY, MRNY, YMAX)
     """)
 
-    # FIXED: Removed invalid "$" from format
-    monthly_surplus = st.number_input(
-        "Enter this month's surplus ($)", 
-        value=5000.0, 
-        step=100.0, 
-        format="%.0f"
-    )
+    monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="%.0f")
 
     st.subheader("Distribution for this month")
     col1, col2, col3 = st.columns(3)
@@ -310,7 +326,7 @@ elif page == "💸 Reinvestment Strategy":
     with col3:
         st.metric("Tactical High-Risk Boost (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
 
-    st.info("These amounts can be manually added to the respective holdings each month. The 10% tactical slice is perfect for short-term profit boosts when VIX is high.")
+    st.info("These amounts can be manually added to the respective holdings each month.")
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

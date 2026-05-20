@@ -72,16 +72,16 @@ payout_data = {
 
 # ==================== HOLDING DESCRIPTIONS ====================
 holding_descriptions = {
-    "JEPI": "JPMorgan Equity Premium Income ETF – Uses covered calls on S&P 500 stocks to generate high monthly income with moderate downside protection.",
-    "JEPQ": "JPMorgan Nasdaq Equity Premium Income ETF – Covered call strategy on the Nasdaq-100 for higher monthly income with tech exposure.",
-    "SCHD": "Schwab U.S. Dividend Equity ETF – High-quality U.S. companies with strong dividend growth and financial health.",
-    "VIG": "Vanguard Dividend Appreciation ETF – Companies that have consistently increased dividends for many years.",
-    "SGOV": "iShares 0-3 Month Treasury Bond ETF – Ultra-safe short-term U.S. Treasuries used as a cash buffer.",
-    "NVDY": "YieldMax NVDA Option Income Strategy ETF – High-yield weekly option income on NVIDIA.",
-    "ULTY": "YieldMax Ultra Option Income Strategy ETF – Diversified high-volatility stocks using aggressive option strategies.",
-    "CHPY": "YieldMax Semiconductor Portfolio Option Income ETF – Covered call strategy on major semiconductor companies.",
-    "MRNY": "YieldMax MRNA Option Income Strategy ETF – High-yield weekly option income on Moderna (biotech volatility).",
-    "YMAX": "YieldMax Universe Fund of Option Income ETFs – Diversified basket of multiple YieldMax ETFs."
+    "JEPI": "JPMorgan Equity Premium Income ETF – Uses covered calls on S&P 500 stocks to generate high monthly income with moderate downside protection. **Role in portfolio**: Provides the largest, most stable monthly income stream and acts as the core of your defensive income strategy.",
+    "JEPQ": "JPMorgan Nasdaq Equity Premium Income ETF – Covered call strategy on the Nasdaq-100 for higher monthly income with tech exposure. **Role in portfolio**: Adds growth-oriented monthly income while still offering downside cushion through options.",
+    "SCHD": "Schwab U.S. Dividend Equity ETF – High-quality U.S. companies with strong dividend growth and financial health. **Role in portfolio**: Delivers reliable quarterly dividend growth and long-term capital appreciation.",
+    "VIG": "Vanguard Dividend Appreciation ETF – Companies that have consistently increased dividends for many years. **Role in portfolio**: Focuses on quality dividend growth to help combat inflation over time.",
+    "SGOV": "iShares 0-3 Month Treasury Bond ETF – Ultra-safe short-term U.S. Treasuries used as a cash buffer. **Role in portfolio**: Provides liquidity and stability; acts as your emergency cash reserve.",
+    "NVDY": "YieldMax NVDA Option Income Strategy ETF – High-yield weekly option income on NVIDIA. **Role in portfolio**: Tactical high-yield booster that you can scale up or down quickly for extra short-term income.",
+    "ULTY": "YieldMax Ultra Option Income Strategy ETF – Diversified high-volatility stocks using aggressive option strategies. **Role in portfolio**: Highest-yielding slice for opportunistic profit-taking when volatility is elevated.",
+    "CHPY": "YieldMax Semiconductor Portfolio Option Income ETF – Covered call strategy on major semiconductor companies. **Role in portfolio**: Diversified tech/semiconductor exposure with very high weekly payouts.",
+    "MRNY": "YieldMax MRNA Option Income Strategy ETF – High-yield weekly option income on Moderna (biotech volatility). **Role in portfolio**: Pure high-risk/high-reward play for short-term income spikes.",
+    "YMAX": "YieldMax Universe Fund of Option Income ETFs – Diversified basket of multiple YieldMax ETFs. **Role in portfolio**: Easy one-ticker way to spread risk across the entire high-yield slice."
 }
 
 tickers = list(targets.keys())
@@ -182,25 +182,21 @@ if page == "📊 Portfolio Overview":
         with col4: st.metric("Expected Quarterly $", f"${quarterly_expected:,.0f}")
         with col5: st.metric("Expected Monthly $", f"${monthly_expected:,.0f}")
 
-        st.dataframe(
-            cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]],
-            use_container_width=True,
-            hide_index=True
-        )
+        st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
         st.markdown("---")
 
 elif page == "💰 Income Projections":
     total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
     expected_monthly = round(total_annual / 12, 0)
 
-    # 3 clean cards at the top
+    # MONTHLY IS NOW FIRST (LEFTMOST)
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
-    with col2:
-        st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
-    with col3:
         st.metric("**Average Projected Monthly Income**", f"${expected_monthly:,.0f}")
+    with col2:
+        st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col3:
+        st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
 
     st.subheader("Detailed Payouts Schedule")
     payout_rows = []
@@ -229,6 +225,11 @@ elif page == "📋 Holding Details":
     selected_ticker = st.selectbox("Select Holding", tickers)
     if selected_ticker:
         row = df[df["Ticker"] == selected_ticker].iloc[0]
+
+        # DESCRIPTION NOW AT THE VERY TOP
+        st.subheader("Description")
+        st.write(holding_descriptions.get(selected_ticker, "No description available."))
+
         st.subheader(f"{selected_ticker} Detailed Table")
         detail_df = pd.DataFrame([{
             "Ticker": row["Ticker"],
@@ -241,10 +242,6 @@ elif page == "📋 Holding Details":
             "Frequency": row["Frequency"],
         }])
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
-
-        # Description (with Category and %)
-        st.subheader("Description")
-        st.write(holding_descriptions.get(selected_ticker, "No description available."))
 
 elif page == "📊 Portfolio Combined":
     st.subheader("📊 Portfolio Combined View")

@@ -308,25 +308,59 @@ elif page == "💸 Reinvestment Strategy":
     stable = round(monthly_surplus * 0.30, 0)
     growth = round(monthly_surplus * 0.10, 0)
 
-    # Share calculations
-    jepi_shares = round(stable / prices.get("JEPI", 50), 2) if prices.get("JEPI", 0) > 0 else 0
-    growth_etfs = ["SCHD", "VIG", "DGRO", "VYM"]
-    growth_prices = [prices.get(etf, 50) for etf in growth_etfs]
-    avg_growth_price = sum(growth_prices) / len(growth_prices) if growth_prices else 50
-    growth_shares = round(growth / avg_growth_price, 2)
+    # Weekly payout estimates
+    tactical_weekly = round(tactical * 0.60 / 52, 0)   # average YieldMax weekly yield ~60%
+    stable_weekly = round(stable * 0.084 / 52, 0)      # JEPI ~8.4% annual
+    growth_weekly = round(growth * 0.025 / 52, 0)      # Quality growth ~2.5% annual
 
     st.subheader("Distribution for this month")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("**Tactical High-Risk Boost (60%)**", f"${tactical:,.0f}")
+        st.metric("**Tactical High-Risk Boost (60%)**", f"${tactical:,.0f}", f"Weekly ≈ ${tactical_weekly:,.0f}")
     with col2:
-        st.metric("**Core Stable Income (30%)**", f"${stable:,.0f}  \n({jepi_shares:.2f} JEPI shares)")
+        st.metric("**Core Stable Income (30%)**", f"${stable:,.0f}", f"Weekly ≈ ${stable_weekly:,.0f}")
     with col3:
-        st.metric("**Quality Dividend Growth (10%)**", f"${growth:,.0f}  \n(~{growth_shares:.2f} total shares)")
+        st.metric("**Quality Dividend Growth (10%)**", f"${growth:,.0f}", f"Weekly ≈ ${growth_weekly:,.0f}")
 
     st.info("These amounts can be manually added to the respective holdings each month.")
 
-    # Grok AI Agent and Surplus Table remain unchanged (as in your last working version)
+    # ==================== REINVESTMENT PERFORMANCE TRACKER ====================
+    st.subheader("Reinvestment Performance Tracker")
+    st.caption("Cumulative reinvested surplus per category — edit the reinvested $ to see live stats")
+
+    if "reinvestment_tracker" not in st.session_state:
+        st.session_state.reinvestment_tracker = pd.DataFrame({
+            "Category": ["Tactical High-Risk", "Core Stable Income", "Quality Dividend Growth"],
+            "Reinvested $": [0, 0, 0]
+        })
+
+    edited_tracker = st.data_editor(
+        st.session_state.reinvestment_tracker,
+        num_rows="fixed",
+        use_container_width=True,
+        column_config={
+            "Category": st.column_config.TextColumn("Category", disabled=True),
+            "Reinvested $": st.column_config.NumberColumn("Reinvested $", min_value=0, format="$%.0f")
+        }
+    )
+    st.session_state.reinvestment_tracker = edited_tracker
+
+    # Calculate stats
+    tracker = edited_tracker.copy()
+    tracker["Additional Shares"] = 0
+    tracker["Current Value"] = tracker["Reinvested $"]
+    tracker["Weekly Payout $"] = 0
+
+    # Rough share & payout estimates
+    tracker.loc[tracker["Category"] == "Tactical High-Risk", "Weekly Payout $"] = round(tracker.loc[tracker["Category"] == "Tactical High-Risk", "Reinvested $"] * 0.60 / 52, 0)
+    tracker.loc[tracker["Category"] == "Core Stable Income", "Weekly Payout $"] = round(tracker.loc[tracker["Category"] == "Core Stable Income", "Reinvested $"] * 0.084 / 52, 0)
+    tracker.loc[tracker["Category"] == "Quality Dividend Growth", "Weekly Payout $"] = round(tracker.loc[tracker["Category"] == "Quality Dividend Growth", "Reinvested $"] * 0.025 / 52, 0)
+
+    st.dataframe(tracker.style.format({
+        "Reinvested $": "${:,.0f}",
+        "Current Value": "${:,.0f}",
+        "Weekly Payout $": "${:,.0f}"
+    }), use_container_width=True, hide_index=True)
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

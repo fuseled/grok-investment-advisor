@@ -16,12 +16,19 @@ st.markdown("""
     h1, h2, h3 { color: #ffffff; }
     .stSidebar { background-color: #161b28; }
     .month-box { background-color: #1a1f2e; padding: 15px; border-radius: 10px; border: 1px solid #2d3748; text-align: center; }
+    .top-ticker {
+        position: fixed; top: 0; left: 0; right: 0; background: #0e1117; 
+        border-bottom: 3px solid #1f6feb; padding: 10px 20px; z-index: 1000;
+        display: flex; justify-content: space-around; align-items: center;
+        font-size: 1.05em; box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # ==================== SIDEBAR ====================
 st.sidebar.title("🚀 Grok AI Advisor")
 auto_refresh = st.sidebar.checkbox("🔄 Auto Refresh Every 60 Seconds", value=True)
+
 page = st.sidebar.radio(
     "Navigate",
     ["📊 Portfolio Overview", 
@@ -33,7 +40,7 @@ page = st.sidebar.radio(
 st.title("Grok AI Investment Advisor v2")
 st.markdown("**$2.1M Portfolio → ~$190k/year** | Built for Jay")
 
-# ==================== PORTFOLIO DATA ====================
+# ==================== DATA ====================
 TOTAL_CAPITAL = 2_100_000
 
 targets = {
@@ -95,6 +102,7 @@ def get_vix():
 prices = get_live_prices(tickers)
 current_vix = get_vix()
 
+# Build main dataframe
 data = []
 total_current_value = 0
 for t in tickers:
@@ -121,11 +129,11 @@ for t in tickers:
 
 df = pd.DataFrame(data)
 
-# ==================== PERMANENT TOP TICKER ====================
 total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
 
+# ==================== PERMANENT TOP TICKER ====================
 ticker_html = f"""
-<div style="position:fixed;top:0;left:0;right:0;background:#0e1117;border-bottom:3px solid #1f6feb;padding:10px 20px;z-index:999;display:flex;justify-content:space-around;align-items:center;font-size:1.1em;box-shadow:0 2px 10px rgba(0,0,0,0.4);">
+<div style="position:fixed;top:0;left:0;right:0;background:#0e1117;border-bottom:3px solid #1f6feb;padding:8px 20px;z-index:1000;display:flex;justify-content:space-around;align-items:center;font-size:1.05em;box-shadow:0 2px 10px rgba(0,0,0,0.4);">
     <div><strong>VIX</strong><br>{current_vix}</div>
     <div><strong>Liquidity</strong><br>94/100</div>
     <div><strong>% Received / Week</strong><br>62%</div>
@@ -162,13 +170,69 @@ if page == "📊 Portfolio Overview":
     st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], use_container_width=True, hide_index=True)
 
 elif page == "💰 Income Projections":
-    # (your current income projections content can go here)
-    st.info("Income Projections page - add your monthly calendar and progress bars here if you want.")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col2:
+        st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
+
+    st.subheader("Detailed Payouts Schedule")
+    payout_rows = []
+    for t in tickers:
+        annual = round(targets[t]["amount"] * payout_data[t]["yield"] / 100, 0)
+        monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
+        payout_rows.append({
+            "Ticker": t,
+            "Category": category_map[t],
+            "Frequency": payout_data[t]["freq"],
+            "Est. Annual Yield": f"{payout_data[t]['yield']}%",
+            "Est. Annual Payout": f"${annual:,.0f}",
+            "Est. Monthly Payout": f"${monthly:,.0f}",
+        })
+    st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
+
+    with st.expander("📆 2026 Monthly Payout Calendar", expanded=True):
+        st.subheader("2026 Monthly Payout Calendar")
+        months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+        quarterly_months = ["Mar","Jun","Sep","Dec"]
+        cols = st.columns(4)
+        for i, month in enumerate(months):
+            with cols[i % 4]:
+                month_payout = 0
+                paying = []
+                for t in tickers:
+                    annual = targets[t]["amount"] * payout_data[t]["yield"] / 100
+                    if payout_data[t]["freq"] in ["Monthly", "Weekly"]:
+                        month_payout += annual / 12
+                        paying.append(t)
+                    elif payout_data[t]["freq"] == "Quarterly" and month in quarterly_months:
+                        month_payout += annual / 4
+                        paying.append(t)
+                month_payout = round(month_payout, 0)
+                st.markdown(f"""
+                <div class="month-box">
+                    <strong>{month}</strong><br>
+                    <span style="font-size: 1.5em; color:#1f6feb;">${month_payout:,.0f}</span><br>
+                    <small>{', '.join(paying[:3]) if paying else '—'}</small>
+                </div>
+                """, unsafe_allow_html=True)
 
 elif page == "📋 Holding Details":
     st.subheader("📋 Detailed Holding Information")
     selected = st.selectbox("Select a holding", tickers)
-    st.info(f"Details for {selected} would appear here.")
+    if selected:
+        price = prices[selected]
+        target_amount = targets[selected]["amount"]
+        shares = round(target_amount / price, 2)
+        market_value = round(shares * price, 2)
+        st.markdown(f"### {selected} — ${price:.2f}")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("Market Value", f"${market_value:,.0f}")
+            st.metric("Shares", f"{shares:,.0f}")
+        with col_b:
+            st.metric("Est. Annual Dividends", f"${round(target_amount * payout_data[selected]['yield']/100, 0):,.0f}")
+            st.metric("Frequency", payout_data[selected]["freq"])
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")
@@ -176,7 +240,7 @@ elif page == "🛡️ Guardrails & Alerts":
 
 st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')} | Auto-refresh: {'ON' if auto_refresh else 'OFF'}")
 
-# ==================== AUTO REFRESH ====================
+# Auto Refresh
 if auto_refresh:
     time.sleep(60)
     st.rerun()

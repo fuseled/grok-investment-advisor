@@ -112,9 +112,11 @@ for t in tickers:
         "Category": category_map[t],
         "Target %": f"{target_pct:.1f}%",
         "Current %": f"{current_pct:.1f}%",
-        "Current Value": current_value,
+        "Current_Pct_Numeric": current_pct,          # ← Numeric version for calculations
+        "Drift": f"{drift:+.1f}%",
         "Price": price,
         "Shares": shares,
+        "Current Value": current_value,
         "Est. Annual Yield": f"{payout_data[t]['yield']}%",
         "Est. Annual Payout": f"${annual:,.0f}",
         "Est. Monthly Payout": f"${monthly:,.0f}",
@@ -132,7 +134,7 @@ if page == "📊 Portfolio Overview":
     with col4: st.metric("Liquidity Score", "94/100")
 
     st.subheader("🤖 Grok AI Portfolio Evaluation")
-    aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current %"].astype(float).sum()
+    aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
     vix_comment = "High volatility — excellent premiums!" if current_vix > 28 else "Low volatility — premiums shrinking." if current_vix < 15 else "Normal volatility range."
     slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
     st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}")
@@ -142,18 +144,18 @@ if page == "📊 Portfolio Overview":
     st.plotly_chart(fig, use_container_width=True)
 
     st.subheader("📊 Portfolio by Strategy Category")
-    cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current %": "sum"}).round(2)
-    cat_summary = cat_summary.rename(columns={"Current %": "Portfolio %"})
+    cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
+    cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
     st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
 
-    # ==================== SEPARATE HEADERS FOR EACH CATEGORY ====================
+    # Separate headers for each category
     st.subheader("Holdings Breakdown by Strategy Category")
     for cat in ["Core Stable Income", "Quality Dividend Growth", "Cash Buffer", "Aggressive High-Yield"]:
         cat_df = df[df["Category"] == cat].copy()
         if cat_df.empty:
             continue
         total_value = cat_df["Current Value"].sum()
-        total_pct = cat_df["Current %"].sum()
+        total_pct = cat_df["Current_Pct_Numeric"].sum()
         
         st.markdown(f"### {cat}")
         col1, col2 = st.columns(2)

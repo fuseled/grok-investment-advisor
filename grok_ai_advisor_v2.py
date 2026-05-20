@@ -6,16 +6,29 @@ from datetime import datetime
 
 st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", page_icon="📈", initial_sidebar_state="expanded")
 
-# Dark mode + mobile CSS
+# Tight professional styling - header flush to top
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; color: #fafafa; }
+    .stApp { 
+        background-color: #0e1117; 
+        color: #fafafa; 
+        padding-top: 0rem !important;
+    }
     .stMetric { background-color: #1a1f2e; border-radius: 12px; padding: 18px; border: 1px solid #2d3748; }
     .stButton>button { background-color: #1f6feb; color: white; border-radius: 8px; font-weight: 600; padding: 14px 28px; }
-    h1, h2, h3 { color: #ffffff; }
+    h1, h2, h3 { color: #ffffff; margin-top: 0 !important; }
     .stSidebar { background-color: #161b28; }
+    .main-header { 
+        margin-top: 0 !important; 
+        padding-top: 0 !important; 
+    }
 </style>
 """, unsafe_allow_html=True)
+
+# ==================== PERMANENT HEADER (tight to top) ====================
+st.title("Grok AI Investment Advisor v2")
+st.markdown("**$2.1M Portfolio → ~$190k/year** | Built for Jay")
+st.divider()
 
 # ==================== SIDEBAR NAVIGATION ====================
 st.sidebar.title("Grok AI Advisor")
@@ -28,9 +41,6 @@ page = st.sidebar.radio(
      "Reinvestment Strategy",
      "Guardrails & Alerts"]
 )
-
-st.title("Grok AI Investment Advisor v2")
-st.markdown("**$2.1M Portfolio → ~$190k/year** | Built for Jay")
 
 # ==================== PORTFOLIO DATA ====================
 TOTAL_CAPITAL = 2_100_000

@@ -51,7 +51,7 @@ category_map = {
     "YMAX": "Aggressive High-Yield",
 }
 
-# Payout data (realistic May 2026 estimates)
+# Payout data
 payout_data = {
     "JEPI": {"freq": "Monthly", "yield": 8.4, "notes": "Covered calls"},
     "JEPQ": {"freq": "Monthly", "yield": 10.3, "notes": "Covered calls"},
@@ -129,10 +129,18 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
             st.metric("Current VIX", f"{current_vix}")
             st.metric("Liquidity Score", "94/100")
 
-        fig = px.pie(df, values="Current Value", names="Ticker", title="Current Portfolio Allocation", hole=0.45)
-        st.plotly_chart(fig, use_container_width=True)
+        # ==================== NEW SUNBURST CHART (Categories + Holdings) ====================
+        st.subheader("📊 Portfolio Allocation by Category & Holding")
+        fig_sunburst = px.sunburst(
+            df,
+            path=['Category', 'Ticker'],
+            values='Current Value',
+            title="Hierarchical View: Category → Individual Holdings",
+            color='Category'
+        )
+        st.plotly_chart(fig_sunburst, use_container_width=True)
 
-        # ==================== CATEGORY SUBTOTALS ====================
+        # Category Subtotals
         st.subheader("📊 Portfolio by Strategy Category")
         category_summary = df.groupby("Category").agg({
             "Current Value": "sum",
@@ -142,7 +150,7 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
         st.dataframe(category_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), 
                      use_container_width=True)
 
-        # ==================== HOLDINGS BREAKDOWN ====================
+        # Holdings Breakdown
         st.subheader("Holdings Breakdown by Strategy Category")
         st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], 
                      use_container_width=True, hide_index=True)
@@ -175,6 +183,21 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
 
         st.dataframe(payout_df, use_container_width=True, hide_index=True)
 
+        # ==================== NEW BAR CHART - MONTHLY PAYOUTS ====================
+        st.subheader("📈 Estimated Monthly Payouts by Ticker")
+        fig_bar = px.bar(
+            payout_df,
+            x="Ticker",
+            y="Est. Monthly Payout",
+            color="Category",
+            title="Monthly Payout Contribution by Holding",
+            text="Est. Monthly Payout",
+            height=500
+        )
+        fig_bar.update_traces(texttemplate="$%{text:,.0f}", textposition="outside")
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        # Summary metrics
         col_a, col_b, col_c = st.columns(3)
         with col_a:
             st.metric("Total Projected Annual Payout", f"${total_annual_payout:,.0f}")
@@ -183,7 +206,7 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
         with col_c:
             st.metric("After-Tax (MFJ est.)", f"~${total_annual_payout - 34500:,.0f}")
 
-        st.caption("Note: YieldMax payouts (NVDY/ULTY/etc.) are variable and often include high Return of Capital (ROC). Actual amounts can fluctuate weekly.")
+        st.caption("Note: YieldMax payouts are variable and often include high Return of Capital (ROC).")
 
         st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
 

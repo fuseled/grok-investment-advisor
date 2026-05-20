@@ -169,7 +169,6 @@ if 'quality_growth_tracker' not in st.session_state:
 
 # ==================== PAGES ====================
 if page == "📊 Portfolio Overview":
-    # (full overview code - unchanged)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -272,26 +271,8 @@ elif page == "💸 Reinvestment Strategy":
     with col2: st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
     with col3: st.metric("Quality Dividend Growth (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
 
-    # HIGH-YIELD
-    st.subheader("🔥 High-Yield Specific Purchase")
-    st.subheader("🔍 AI Advisor for High-Yield Slice")
-    if current_vix > 28:
-        rec = "🚀 **ULTY or MRNY** — Highest premiums right now. Strong buy."
-    elif current_vix > 22:
-        rec = "✅ **NVDY or YMAX** — Excellent balance. Good to hold or add."
-    elif current_vix < 15:
-        rec = "⚠️ **Trim** — Premiums are low."
-    else:
-        rec = "🟡 **CHPY** — Solid middle-ground choice."
-    st.write(rec)
-    with st.form("high_yield_form"):
-        hy_date = st.date_input("Date", value=datetime.today(), key="hy_date")
-        hy_asset = st.selectbox("Asset Purchased", ["NVDY", "ULTY", "CHPY", "MRNY", "YMAX"], key="hy_asset")
-        hy_amount = st.number_input("Amount Purchased ($)", value=1000.0, step=100.0, format="%.0f", key="hy_amount")
-        if st.form_submit_button("Add High-Yield Purchase"):
-            st.session_state.high_yield_tracker = pd.concat([st.session_state.high_yield_tracker, pd.DataFrame([{"Asset": hy_asset, "Position": hy_amount, "Payments_Made": 0}])], ignore_index=True)
-            st.success(f"✅ {hy_asset} purchase logged!")
-    st.subheader("High-Yield Holdings Tracker")
+    # HIGH-YIELD TRACKER
+    st.subheader("🔥 High-Yield Holdings Tracker")
     hy_df = st.session_state.high_yield_tracker.copy()
     hy_df["Shares"] = hy_df["Position"] / hy_df["Asset"].map(lambda a: prices.get(a, 1))
     hy_df["Est Monthly Payout"] = hy_df["Position"] * hy_df["Asset"].map(lambda a: payout_data.get(a, {"yield": 0})["yield"] / 100 / 12)
@@ -303,22 +284,8 @@ elif page == "💸 Reinvestment Strategy":
     total_df = pd.concat([edited_hy, pd.DataFrame([total_row])], ignore_index=True)
     st.dataframe(total_df.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748']*len(x) if x.name == len(total_df)-1 else ['']*len(x), axis=1), use_container_width=True, hide_index=True)
 
-    # CORE STABLE
-    st.subheader("🛡️ Core Stable Specific Purchase")
-    st.subheader("🔍 AI Advisor for Core Stable Income")
-    if current_vix > 22:
-        rec = "✅ **JEPQ** — Higher income in volatile markets."
-    else:
-        rec = "🛡️ **JEPI** — More stable and defensive choice."
-    st.write(rec)
-    with st.form("core_stable_form"):
-        cs_date = st.date_input("Date", value=datetime.today(), key="cs_date")
-        cs_asset = st.selectbox("Asset Purchased", ["JEPI", "JEPQ"], key="cs_asset")
-        cs_amount = st.number_input("Amount Purchased ($)", value=1000.0, step=100.0, format="%.0f", key="cs_amount")
-        if st.form_submit_button("Add Core Stable Purchase"):
-            st.session_state.core_stable_tracker = pd.concat([st.session_state.core_stable_tracker, pd.DataFrame([{"Asset": cs_asset, "Position": cs_amount, "Payments_Made": 0}])], ignore_index=True)
-            st.success(f"✅ {cs_asset} purchase logged!")
-    st.subheader("Core Stable Holdings Tracker")
+    # CORE STABLE TRACKER
+    st.subheader("🛡️ Core Stable Holdings Tracker")
     cs_df = st.session_state.core_stable_tracker.copy()
     cs_df["Shares"] = cs_df["Position"] / cs_df["Asset"].map(lambda a: prices.get(a, 1))
     cs_df["Est Monthly Payout"] = cs_df["Position"] * cs_df["Asset"].map(lambda a: payout_data.get(a, {"yield": 0})["yield"] / 100 / 12)
@@ -330,19 +297,8 @@ elif page == "💸 Reinvestment Strategy":
     total_df = pd.concat([edited_cs, pd.DataFrame([total_row])], ignore_index=True)
     st.dataframe(total_df.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748']*len(x) if x.name == len(total_df)-1 else ['']*len(x), axis=1), use_container_width=True, hide_index=True)
 
-    # QUALITY GROWTH
-    st.subheader("🌱 Quality Dividend Growth Specific Purchase")
-    st.subheader("🔍 AI Advisor for Quality Dividend Growth")
-    rec = "✅ **SCHD** — Strong income + quality focus. VIG for more growth-oriented exposure."
-    st.write(rec)
-    with st.form("growth_form"):
-        qd_date = st.date_input("Date", value=datetime.today(), key="qd_date")
-        qd_asset = st.selectbox("Asset Purchased", ["SCHD", "VIG"], key="qd_asset")
-        qd_amount = st.number_input("Amount Purchased ($)", value=1000.0, step=100.0, format="%.0f", key="qd_amount")
-        if st.form_submit_button("Add Growth Purchase"):
-            st.session_state.quality_growth_tracker = pd.concat([st.session_state.quality_growth_tracker, pd.DataFrame([{"Asset": qd_asset, "Position": qd_amount, "Payments_Made": 0}])], ignore_index=True)
-            st.success(f"✅ {qd_asset} purchase logged!")
-    st.subheader("Quality Dividend Growth Holdings Tracker")
+    # QUALITY GROWTH TRACKER
+    st.subheader("🌱 Quality Dividend Growth Holdings Tracker")
     qg_df = st.session_state.quality_growth_tracker.copy()
     qg_df["Shares"] = qg_df["Position"] / qg_df["Asset"].map(lambda a: prices.get(a, 1))
     qg_df["Est Monthly Payout"] = qg_df["Position"] * qg_df["Asset"].map(lambda a: payout_data.get(a, {"yield": 0})["yield"] / 100 / 12)

@@ -146,22 +146,20 @@ if page == "📊 Portfolio Overview":
     cat_summary = cat_summary.rename(columns={"Current %": "Portfolio %"})
     st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
 
-    # ==================== NEW: SEPARATE HEADERS FOR EACH CATEGORY ====================
+    # ==================== SEPARATE HEADERS FOR EACH CATEGORY ====================
     st.subheader("Holdings Breakdown by Strategy Category")
-
     for cat in ["Core Stable Income", "Quality Dividend Growth", "Cash Buffer", "Aggressive High-Yield"]:
         cat_df = df[df["Category"] == cat].copy()
         if cat_df.empty:
             continue
-            
         total_value = cat_df["Current Value"].sum()
         total_pct = cat_df["Current %"].sum()
         
         st.markdown(f"### {cat}")
-        col_sum1, col_sum2 = st.columns(2)
-        with col_sum1:
+        col1, col2 = st.columns(2)
+        with col1:
             st.metric("Total Value", f"${total_value:,.0f}")
-        with col_sum2:
+        with col2:
             st.metric("Portfolio %", f"{total_pct:.1f}%")
         
         st.dataframe(
@@ -172,12 +170,52 @@ if page == "📊 Portfolio Overview":
         st.markdown("---")
 
 elif page == "💰 Income Projections":
-    # (Your income projections content remains here)
-    pass
+    total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col2:
+        st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
+
+    st.subheader("Detailed Payouts Schedule")
+    payout_rows = []
+    for t in tickers:
+        annual = round(targets[t]["amount"] * payout_data[t]["yield"] / 100, 0)
+        monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
+        if payout_data[t]["freq"] == "Weekly":
+            schedule = "Weekly (typically Fridays)"
+        elif payout_data[t]["freq"] == "Monthly":
+            schedule = "Monthly (usually mid-month)"
+        else:
+            schedule = "Mar 15, Jun 15, Sep 15, Dec 15"
+        payout_rows.append({
+            "Ticker": t,
+            "Category": category_map[t],
+            "Frequency": payout_data[t]["freq"],
+            "Est. Annual Yield": f"{payout_data[t]['yield']}%",
+            "Est. Annual Payout": f"${annual:,.0f}",
+            "Est. Monthly Payout": f"${monthly:,.0f}",
+            "Payout Schedule": schedule
+        })
+    st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
 
 elif page == "📋 Holding Details":
-    # (Your holding details content remains here)
-    pass
+    st.subheader("📋 Detailed Holding Information")
+    selected_ticker = st.selectbox("Select Holding", tickers)
+    if selected_ticker:
+        row = df[df["Ticker"] == selected_ticker].iloc[0]
+        st.subheader(f"{selected_ticker} Detailed Table")
+        detail_df = pd.DataFrame([{
+            "Ticker": row["Ticker"],
+            "Category": row["Category"],
+            "Current Value": f"${row['Current Value']:,.0f}",
+            "Portfolio %": row["Current %"],
+            "Est. Annual Yield": row["Est. Annual Yield"],
+            "Est. Annual Payout": row["Est. Annual Payout"],
+            "Est. Monthly Payout": row["Est. Monthly Payout"],
+            "Frequency": row["Frequency"],
+        }])
+        st.dataframe(detail_df, use_container_width=True, hide_index=True)
 
 elif page == "📊 Portfolio Combined":
     st.subheader("📊 Portfolio Combined View")

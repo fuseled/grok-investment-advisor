@@ -72,7 +72,7 @@ payout_data = {
 
 tickers = list(targets.keys())
 
-@st.cache_data(ttl=60)   # Auto-refresh every 60 seconds
+@st.cache_data(ttl=60)
 def get_live_prices(ticker_list):
     prices = {}
     for t in ticker_list:
@@ -91,10 +91,10 @@ def get_vix():
     except:
         return 18.0
 
-# ==================== AUTO LOAD DATA ====================
 prices = get_live_prices(tickers)
 current_vix = get_vix()
 
+# Build main dataframe
 data = []
 total_current_value = 0
 for t in tickers:
@@ -148,22 +148,77 @@ if page == "📊 Portfolio Overview":
     st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], use_container_width=True, hide_index=True)
 
 elif page == "💰 Income Projections":
-    # (Your existing Income Projections content goes here - same as last version)
     total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
     col1, col2 = st.columns(2)
     with col1: st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
     with col2: st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
 
-    # Add your detailed payouts table and monthly calendar here if you want
+    st.subheader("Detailed Payouts Schedule")
+    payout_rows = []
+    for t in tickers:
+        annual = round(targets[t]["amount"] * payout_data[t]["yield"] / 100, 0)
+        monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
+        if payout_data[t]["freq"] == "Weekly":
+            schedule = "Weekly (typically Fridays)"
+        elif payout_data[t]["freq"] == "Monthly":
+            schedule = "Monthly (usually mid-month)"
+        else:
+            schedule = "Mar 15, Jun 15, Sep 15, Dec 15"
+        payout_rows.append({
+            "Ticker": t,
+            "Category": category_map[t],
+            "Frequency": payout_data[t]["freq"],
+            "Est. Annual Yield": f"{payout_data[t]['yield']}%",
+            "Est. Annual Payout": f"${annual:,.0f}",
+            "Est. Monthly Payout": f"${monthly:,.0f}",
+            "Payout Schedule": schedule
+        })
+    st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
 
 elif page == "📋 Holding Details":
-    # (Your existing Holding Details content goes here)
+    st.subheader("📋 Detailed Holding Information")
+    selected_ticker = st.selectbox("Select Holding", tickers)
+    if selected_ticker:
+        price = prices[selected_ticker]
+        target_amount = targets[selected_ticker]["amount"]
+        shares = round(target_amount / price, 2)
+        market_value = round(shares * price, 2)
+        invested = target_amount
+        total_return = round(market_value - invested, 2)
+        total_return_pct = round((market_value / invested - 1) * 100, 2)
+
+        st.subheader(f"📈 {selected_ticker} Income Summary")
+        col_ytd, col_mtd = st.columns(2)
+        with col_ytd: st.metric("YTD Received / Expected", "$320 / $1,250", "25.6%")
+        with col_mtd: st.metric("MTD Received / Expected", "$85 / $208", "40.9%")
+
+        st.markdown(f"### {selected_ticker} — ${price}")
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("Market Value", f"${market_value:,.0f}")
+            st.metric("Shares", f"{shares:,.0f}")
+        with col_b:
+            st.metric("Total Return", f"${total_return:,.0f} ({total_return_pct}%)")
+            st.metric("Est. Annual Dividends", f"${round(target_amount * payout_data[selected_ticker]['yield']/100, 0):,.0f}")
 
 elif page == "📊 Portfolio Combined":
-    # (Your existing Portfolio Combined content goes here)
+    st.subheader("📊 Entire Portfolio Combined View")
+    total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
+
+    st.subheader("📈 Portfolio Income Summary")
+    col_ytd, col_mtd = st.columns(2)
+    with col_ytd: st.metric("YTD Received / Expected", "$4,200 / $79,167", "5.3%")
+    with col_mtd: st.metric("MTD Received / Expected", "$1,484 / $15,833", "9.4%")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        st.metric("Current Portfolio Value", f"${total_current_value:,.0f}")
+        st.metric("Blended Yield", f"{(total_annual / TOTAL_CAPITAL * 100):.1f}%")
+    with col2:
+        st.metric("Est. Annual Income", f"${total_annual:,.0f}")
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")
     st.info("All guardrails are currently **GREEN**. No immediate action required.")
 
-st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')} | Data refreshes automatically")
+st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")

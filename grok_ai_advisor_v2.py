@@ -13,22 +13,22 @@ st.markdown("""
         background-color: #0e1117; 
         color: #fafafa; 
         padding-top: 0rem !important;
+        margin-top: 0 !important;
+    }
+    .block-container {
+        padding-top: 0rem !important;
+        margin-top: 0 !important;
     }
     .stMetric { background-color: #1a1f2e; border-radius: 12px; padding: 18px; border: 1px solid #2d3748; }
     .stButton>button { background-color: #1f6feb; color: white; border-radius: 8px; font-weight: 600; padding: 14px 28px; }
-    h1, h2, h3 { color: #ffffff; margin-top: 0 !important; }
-    .stSidebar { background-color: #161b28; }
-    .main-header { 
+    h1, h2, h3 { 
+        color: #ffffff; 
         margin-top: 0 !important; 
         padding-top: 0 !important; 
     }
+    .stSidebar { background-color: #161b28; }
 </style>
 """, unsafe_allow_html=True)
-
-# ==================== PERMANENT HEADER (tight to top) ====================
-st.title("Grok AI Investment Advisor v2")
-st.markdown("**$2.1M Portfolio → ~$190k/year** | Built for Jay")
-st.divider()
 
 # ==================== SIDEBAR NAVIGATION ====================
 st.sidebar.title("Grok AI Advisor")
@@ -41,6 +41,9 @@ page = st.sidebar.radio(
      "Reinvestment Strategy",
      "Guardrails & Alerts"]
 )
+
+st.title("Grok AI Investment Advisor v2")
+st.markdown("**$2.1M Portfolio → ~$190k/year** | Built for Jay")
 
 # ==================== PORTFOLIO DATA ====================
 TOTAL_CAPITAL = 2_100_000
@@ -329,15 +332,4 @@ elif page == "Reinvestment Strategy":
     with st.form("growth_form"):
         qd_date = st.date_input("Date", value=datetime.today(), key="qd_date")
         qd_asset = st.selectbox("Asset Purchased", ["SCHD", "VIG"], key="qd_asset")
-        qd_amount = st.number_input("Amount Purchased ($)", value=1000.0, step=100.0, format="%.0f", key="qd_amount")
-        if st.form_submit_button("Add Growth Purchase"):
-            st.session_state.quality_growth_tracker.append({"Asset": qd_asset, "Position": qd_amount, "Action": "Buy"})
-            st.success(f"{qd_asset} purchase logged!")
-    st.subheader("Quality Dividend Growth Holdings Tracker ($1k starter each)")
-    st.dataframe(pd.DataFrame(st.session_state.quality_growth_tracker), use_container_width=True, hide_index=True)
-
-elif page == "Guardrails & Alerts":
-    st.subheader("Proactive Guardrails")
-    st.info("All guardrails are currently GREEN. No immediate action required.")
-
-st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
+        qd_amount = st.number_input("Amount Purchased ($)", value=1000.0

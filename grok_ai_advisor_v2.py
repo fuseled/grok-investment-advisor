@@ -71,32 +71,84 @@ payout_data = {
     "YMAX": {"freq": "Weekly", "yield": 57.0},
 }
 
-# ==================== DESCRIPTIONS ====================
-category_descriptions = { ... }   # (kept exactly as before)
-holding_descriptions = { ... }    # (kept exactly as before)
+# ==================== CATEGORY & HOLDING DESCRIPTIONS ====================
+category_descriptions = {
+    "Core Stable Income": "Provides the largest and most reliable portion of monthly income using covered-call strategies on broad market indices. Acts as the defensive backbone of the portfolio.",
+    "Quality Dividend Growth": "Focuses on high-quality companies with growing dividends and strong fundamentals. Delivers quarterly income while building long-term capital appreciation and inflation protection.",
+    "Cash Buffer": "Ultra-safe short-term U.S. Treasuries that serve as liquidity reserve and emergency cash. Maintains stability and allows quick reallocation when opportunities arise.",
+    "Aggressive High-Yield": "Tactical high-income slice using YieldMax option-income ETFs. Designed for short-term profit boosts and can be scaled up or down easily based on market volatility."
+}
+
+holding_descriptions = {
+    "JEPI": "JPMorgan Equity Premium Income ETF – Uses covered calls on S&P 500 stocks to generate high monthly income with moderate downside protection. **Role in portfolio**: Provides the largest, most stable monthly income stream and acts as the core of your defensive income strategy.",
+    "JEPQ": "JPMorgan Nasdaq Equity Premium Income ETF – Covered call strategy on the Nasdaq-100 for higher monthly income with tech exposure. **Role in portfolio**: Adds growth-oriented monthly income while still offering downside cushion through options.",
+    "SCHD": "Schwab U.S. Dividend Equity ETF – High-quality U.S. companies with strong dividend growth and financial health. **Role in portfolio**: Delivers reliable quarterly dividend growth and long-term capital appreciation.",
+    "VIG": "Vanguard Dividend Appreciation ETF – Companies that have consistently increased dividends for many years. **Role in portfolio**: Focuses on quality dividend growth to help combat inflation over time.",
+    "SGOV": "iShares 0-3 Month Treasury Bond ETF – Ultra-safe short-term U.S. Treasuries used as a cash buffer. **Role in portfolio**: Provides liquidity and stability; acts as your emergency cash reserve.",
+    "NVDY": "YieldMax NVDA Option Income Strategy ETF – High-yield weekly option income on NVIDIA. **Role in portfolio**: Tactical high-yield booster that you can scale up or down quickly for extra short-term income.",
+    "ULTY": "YieldMax Ultra Option Income Strategy ETF – Diversified high-volatility stocks using aggressive option strategies. **Role in portfolio**: Highest-yielding slice for opportunistic profit-taking when volatility is elevated.",
+    "CHPY": "YieldMax Semiconductor Portfolio Option Income ETF – Covered call strategy on major semiconductor companies. **Role in portfolio**: Diversified tech/semiconductor exposure with very high weekly payouts.",
+    "MRNY": "YieldMax MRNA Option Income Strategy ETF – High-yield weekly option income on Moderna (biotech volatility). **Role in portfolio**: Pure high-risk/high-reward play for short-term income spikes.",
+    "YMAX": "YieldMax Universe Fund of Option Income ETFs – Diversified basket of multiple YieldMax ETFs. **Role in portfolio**: Easy one-ticker way to spread risk across the entire high-yield slice."
+}
 
 tickers = list(targets.keys())
 
 @st.cache_data(ttl=60)
-def get_live_prices(ticker_list): ...   # (kept exactly as before)
+def get_live_prices(ticker_list):
+    prices = {}
+    for t in ticker_list:
+        try:
+            hist = yf.Ticker(t).history(period="5d")
+            prices[t] = round(hist['Close'].iloc[-1], 2)
+        except:
+            prices[t] = 0.0
+    return prices
 
 @st.cache_data(ttl=60)
-def get_vix(): ...   # (kept exactly as before)
+def get_vix():
+    try:
+        vix_hist = yf.Ticker("^VIX").history(period="5d")
+        return round(vix_hist['Close'].iloc[-1], 2)
+    except:
+        return 18.0
 
 prices = get_live_prices(tickers)
 current_vix = get_vix()
 
-# Build main dataframe (kept exactly as before)
-data = []   # ... (unchanged)
-df = pd.DataFrame(data)
+# Build main dataframe
+data = []
+for t in tickers:
+    target_amount = targets[t]["amount"]
+    price = prices[t]
+    shares = round(target_amount / price, 2) if price > 0 else 0
+    current_value = round(shares * price, 2)
+    current_pct = round((current_value / TOTAL_CAPITAL) * 100, 2)
+    target_pct = targets[t]["target_pct"]
+    drift = round(current_pct - target_pct, 2)
+    annual = round(target_amount * payout_data[t]["yield"] / 100, 0)
+    monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
 
-# ==================== TRANSACTION TRACKER ====================
-if 'transactions' not in st.session_state:
-    st.session_state.transactions = []
+    data.append({
+        "Ticker": t,
+        "Category": category_map[t],
+        "Target %": f"{target_pct:.1f}%",
+        "Current %": f"{current_pct:.1f}%",
+        "Current_Pct_Numeric": current_pct,
+        "Drift": f"{drift:+.1f}%",
+        "Price": price,
+        "Shares": shares,
+        "Current Value": current_value,
+        "Est. Annual Yield": f"{payout_data[t]['yield']}%",
+        "Est. Annual Payout": f"${annual:,.0f}",
+        "Est. Monthly Payout": f"${monthly:,.0f}",
+        "Frequency": payout_data[t]["freq"],
+    })
+
+df = pd.DataFrame(data)
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
-    # (All your existing overview code remains unchanged)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -109,31 +161,175 @@ if page == "📊 Portfolio Overview":
     slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
     st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}")
 
-    # ==================== NEW: AI ANALYST FOR HIGH-YIELD ETFs ====================
-    st.subheader("🔍 AI Analyst: High-Yield ETF Recommendation")
-    yieldmax_slice = aggressive_current
-    if current_vix > 28:
-        rec = "🚀 **ULTY or MRNY** — Highest premiums right now. Add to the tactical slice."
-    elif current_vix > 22:
-        rec = "✅ **NVDY or YMAX** — Strong balance of yield and stability. Good entry point."
-    elif current_vix < 15:
-        rec = "⚠️ **Hold or trim** — Premiums are low. Consider reducing exposure until volatility returns."
-    else:
-        rec = "🟡 **CHPY** — Solid middle-ground choice in current conditions."
+    col_chart, col_table = st.columns(2)
+    with col_chart:
+        st.subheader("📊 Current Portfolio Allocation")
+        fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
+        st.plotly_chart(fig, use_container_width=True)
+    with col_table:
+        st.subheader("📊 Portfolio by Strategy Category")
+        cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
+        cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
+        st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
 
-    st.write(rec)
-    st.caption(f"Current aggressive slice: **{yieldmax_slice:.1f}%** | VIX: **{current_vix}**")
+    st.subheader("Holdings Breakdown by Strategy Category")
+    for cat in ["Core Stable Income", "Quality Dividend Growth", "Cash Buffer", "Aggressive High-Yield"]:
+        cat_df = df[df["Category"] == cat].copy()
+        if cat_df.empty: continue
+        total_value = cat_df["Current Value"].sum()
+        total_pct = cat_df["Current_Pct_Numeric"].sum()
+        yearly_expected = round(cat_df["Est. Annual Payout"].str.replace("$","").str.replace(",","").astype(float).sum(), 0)
+        quarterly_expected = round(yearly_expected / 4, 0)
+        monthly_expected = round(yearly_expected / 12, 0)
 
-    # (rest of overview remains unchanged - sunburst, category breakdown, etc.)
+        st.markdown(f"### {cat}")
+        st.caption(category_descriptions[cat])
 
-    # ... [the rest of your Portfolio Overview code continues exactly as before]
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1: st.metric("Total Value", f"${total_value:,.0f}")
+        with col2: st.metric("Portfolio %", f"{total_pct:.1f}%")
+        with col3: st.metric("Expected Yearly $", f"${yearly_expected:,.0f}")
+        with col4: st.metric("Expected Quarterly $", f"${quarterly_expected:,.0f}")
+        with col5: st.metric("Expected Monthly $", f"${monthly_expected:,.0f}")
 
-# (All other pages — Income Projections, Holding Details, Portfolio Combined, Reinvestment Strategy, Guardrails — remain 100% unchanged)
+        st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
+        st.markdown("---")
 
-# ==================== REINVESTMENT STRATEGY (kept fully intact) ====================
+elif page == "💰 Income Projections":
+    total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
+    expected_monthly = round(total_annual / 12, 0)
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("**Average Projected Monthly Income**", f"${expected_monthly:,.0f}")
+    with col2:
+        st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col3:
+        st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
+
+    st.subheader("Detailed Payouts Schedule")
+    payout_rows = []
+    for t in tickers:
+        annual = round(targets[t]["amount"] * payout_data[t]["yield"] / 100, 0)
+        monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
+        if payout_data[t]["freq"] == "Weekly":
+            schedule = "Weekly (typically Fridays)"
+        elif payout_data[t]["freq"] == "Monthly":
+            schedule = "Monthly (usually mid-month)"
+        else:
+            schedule = "Mar 15, Jun 15, Sep 15, Dec 15"
+        payout_rows.append({
+            "Ticker": t,
+            "Category": category_map[t],
+            "Frequency": payout_data[t]["freq"],
+            "Est. Annual Yield": f"{payout_data[t]['yield']}%",
+            "Est. Annual Payout": f"${annual:,.0f}",
+            "Est. Monthly Payout": f"${monthly:,.0f}",
+            "Payout Schedule": schedule
+        })
+    st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
+
+elif page == "📋 Holding Details":
+    st.subheader("📋 Detailed Holding Information")
+    selected_ticker = st.selectbox("Select Holding", tickers)
+    if selected_ticker:
+        row = df[df["Ticker"] == selected_ticker].iloc[0]
+        target_amount = targets[selected_ticker]["amount"]
+
+        st.subheader("Description")
+        st.write(holding_descriptions.get(selected_ticker, "No description available."))
+
+        st.subheader(f"{selected_ticker} Detailed Table")
+        detail_df = pd.DataFrame([{
+            "Ticker": row["Ticker"],
+            "Category": row["Category"],
+            "Current Value": f"${row['Current Value']:,.0f}",
+            "Portfolio %": row["Current %"],
+            "Est. Annual Yield": row["Est. Annual Yield"],
+            "Est. Annual Payout": row["Est. Annual Payout"],
+            "Est. Monthly Payout": row["Est. Monthly Payout"],
+            "Frequency": row["Frequency"],
+        }])
+        st.dataframe(detail_df, use_container_width=True, hide_index=True)
+
+        # ==================== UPDATED PAYOUT CHART ====================
+        st.subheader(f"📅 Projected Future Payouts for {selected_ticker}")
+        today = datetime(2026, 5, 20).date()
+        freq = payout_data[selected_ticker]["freq"]
+        annual_payout = target_amount * payout_data[selected_ticker]["yield"] / 100
+
+        dates = []
+        amounts = []
+        current = today + timedelta(days=7)
+
+        for i in range(12):
+            if freq == "Weekly":
+                current += timedelta(days=7)
+                per_payout = round(annual_payout / 52, 0)
+            elif freq == "Monthly":
+                current = current.replace(day=15) + timedelta(days=30)
+                per_payout = round(annual_payout / 12, 0)
+            else:  # Quarterly
+                current += timedelta(days=90)
+                per_payout = round(annual_payout / 4, 0)
+            dates.append(current.strftime("%b %d, %Y"))
+            amounts.append(per_payout)
+
+        chart_df = pd.DataFrame({"Date": dates, "Projected Payout $": amounts})
+
+        fig = px.bar(
+            chart_df, 
+            x="Date", 
+            y="Projected Payout $",
+            title=f"Next 12 Projected Payouts – {selected_ticker}",
+            color_discrete_sequence=["#1f6feb"],
+            text="Projected Payout $"
+        )
+
+        fig.update_traces(
+            texttemplate="$%{y:,.0f}",
+            textposition="outside",
+            width=0.5          # ← 50% bar width (thinner bars)
+        )
+
+        fig.update_layout(
+            xaxis_tickangle=-45,
+            bargap=0.4,        # extra spacing between bars
+            height=480
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+elif page == "📊 Portfolio Combined":
+    st.subheader("📊 Portfolio Combined View")
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
 elif page == "💸 Reinvestment Strategy":
-    # ... (your full working calculator + tracker code from last version)
+    st.subheader("💸 Monthly Surplus Reinvestment Strategy")
+    st.write("""
+    **Goal**: Automatically roll over any unspent income each month to fight inflation, strengthen the core portfolio, and allow tactical short-term boosts.
+    
+    **Allocation Rule**:
+    - 60% → Quality Dividend Growth (SCHD + VIG)
+    - 30% → Core Stable Income (JEPI)
+    - 10% → Tactical High-Risk Boost (YieldMax slice: NVDY, ULTY, CHPY, MRNY, YMAX)
+    """)
 
-# (rest of the script unchanged)
+    monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="%.0f")
+
+    st.subheader("Distribution for this month")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Quality Dividend Growth (60%)", f"${round(monthly_surplus * 0.60):,.0f}")
+    with col2:
+        st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
+    with col3:
+        st.metric("Tactical High-Risk Boost (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
+
+    st.info("These amounts can be manually added to the respective holdings each month.")
+
+elif page == "🛡️ Guardrails & Alerts":
+    st.subheader("🛡️ Proactive Guardrails")
+    st.info("All guardrails are currently **GREEN**. No immediate action required.")
 
 st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")

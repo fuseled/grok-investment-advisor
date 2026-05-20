@@ -129,4 +129,63 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
             st.metric("Current VIX", f"{current_vix}")
             st.metric("Liquidity Score", "94/100")
 
-        fig = px.pie(df, values="Current Value", names="Ticker", title="
+        fig = px.pie(df, values="Current Value", names="Ticker", title="Current Portfolio Allocation", hole=0.45)
+        st.plotly_chart(fig, use_container_width=True)
+
+        # ==================== CATEGORY SUBTOTALS ====================
+        st.subheader("📊 Portfolio by Strategy Category")
+        category_summary = df.groupby("Category").agg({
+            "Current Value": "sum",
+            "Current_Pct_Numeric": "sum"
+        }).round(2)
+        category_summary = category_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
+        st.dataframe(category_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), 
+                     use_container_width=True)
+
+        # ==================== HOLDINGS BREAKDOWN ====================
+        st.subheader("Holdings Breakdown by Strategy Category")
+        st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], 
+                     use_container_width=True, hide_index=True)
+
+        # ==================== DETAILED PAYOUTS SECTION ====================
+        st.header("💰 Detailed Payouts Section")
+
+        payout_rows = []
+        total_annual_payout = 0
+
+        for t in tickers:
+            target_amount = targets[t]["amount"]
+            yield_pct = payout_data[t]["yield"]
+            annual_payout = round(target_amount * (yield_pct / 100), 0)
+            total_annual_payout += annual_payout
+
+            monthly_payout = round(annual_payout / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual_payout / 4, 0)
+
+            payout_rows.append({
+                "Ticker": t,
+                "Category": category_map[t],
+                "Frequency": payout_data[t]["freq"],
+                "Est. Annual Yield": f"{yield_pct}%",
+                "Est. Annual Payout": f"${annual_payout:,.0f}",
+                "Est. Monthly Payout": f"${monthly_payout:,.0f}",
+                "Notes": payout_data[t]["notes"]
+            })
+
+        payout_df = pd.DataFrame(payout_rows)
+
+        st.dataframe(payout_df, use_container_width=True, hide_index=True)
+
+        col_a, col_b, col_c = st.columns(3)
+        with col_a:
+            st.metric("Total Projected Annual Payout", f"${total_annual_payout:,.0f}")
+        with col_b:
+            st.metric("Blended Yield", f"{(total_annual_payout / TOTAL_CAPITAL * 100):.1f}%")
+        with col_c:
+            st.metric("After-Tax (MFJ est.)", f"~${total_annual_payout - 34500:,.0f}")
+
+        st.caption("Note: YieldMax payouts (NVDY/ULTY/etc.) are variable and often include high Return of Capital (ROC). Actual amounts can fluctuate weekly.")
+
+        st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
+
+else:
+    st.info("Click the big blue button above to load live data and run the full analysis.")

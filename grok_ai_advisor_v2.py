@@ -173,7 +173,7 @@ if 'quality_growth_tracker' not in st.session_state:
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
-    # (your existing overview code with AI Analyst)
+    # (full overview code with AI Analyst)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -248,8 +248,19 @@ elif page == "💸 Reinvestment Strategy":
     with col2: st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
     with col3: st.metric("Quality Dividend Growth (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
 
-    # High-Yield Specific Purchase
+    # ==================== HIGH-YIELD SECTION ====================
     st.subheader("🔥 High-Yield Specific Purchase")
+    st.subheader("🔍 AI Advisor for High-Yield Slice")
+    if current_vix > 28:
+        rec = "🚀 **ULTY or MRNY** — Highest premiums right now. Strong buy."
+    elif current_vix > 22:
+        rec = "✅ **NVDY or YMAX** — Excellent balance. Good to hold or add."
+    elif current_vix < 15:
+        rec = "⚠️ **Trim** — Premiums are low."
+    else:
+        rec = "🟡 **CHPY** — Solid middle-ground choice."
+    st.write(rec)
+
     with st.form("high_yield_form"):
         hy_date = st.date_input("Date", value=datetime.today(), key="hy_date")
         hy_asset = st.selectbox("Asset Purchased", ["NVDY", "ULTY", "CHPY", "MRNY", "YMAX"], key="hy_asset")
@@ -261,8 +272,15 @@ elif page == "💸 Reinvestment Strategy":
     st.subheader("High-Yield Holdings Tracker ($1k starter each)")
     st.dataframe(pd.DataFrame(st.session_state.high_yield_tracker), use_container_width=True, hide_index=True)
 
-    # Core Stable Specific Purchase
+    # ==================== CORE STABLE SECTION ====================
     st.subheader("🛡️ Core Stable Specific Purchase")
+    st.subheader("🔍 AI Advisor for Core Stable Income")
+    if current_vix > 22:
+        rec = "✅ **JEPQ** — Higher income in volatile markets."
+    else:
+        rec = "🛡️ **JEPI** — More stable and defensive choice."
+    st.write(rec)
+
     with st.form("core_stable_form"):
         cs_date = st.date_input("Date", value=datetime.today(), key="cs_date")
         cs_asset = st.selectbox("Asset Purchased", ["JEPI", "JEPQ"], key="cs_asset")
@@ -274,8 +292,12 @@ elif page == "💸 Reinvestment Strategy":
     st.subheader("Core Stable Holdings Tracker ($1k starter each)")
     st.dataframe(pd.DataFrame(st.session_state.core_stable_tracker), use_container_width=True, hide_index=True)
 
-    # Quality Dividend Growth Specific Purchase
+    # ==================== QUALITY GROWTH SECTION ====================
     st.subheader("🌱 Quality Dividend Growth Specific Purchase")
+    st.subheader("🔍 AI Advisor for Quality Dividend Growth")
+    rec = "✅ **SCHD** — Strong income + quality focus. VIG for more growth-oriented exposure."
+    st.write(rec)
+
     with st.form("growth_form"):
         qd_date = st.date_input("Date", value=datetime.today(), key="qd_date")
         qd_asset = st.selectbox("Asset Purchased", ["SCHD", "VIG"], key="qd_asset")

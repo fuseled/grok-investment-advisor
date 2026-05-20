@@ -71,7 +71,7 @@ payout_data = {
     "YMAX": {"freq": "Weekly", "yield": 57.0},
 }
 
-# ==================== CATEGORY & HOLDING DESCRIPTIONS ====================
+# ==================== DESCRIPTIONS ====================
 category_descriptions = {
     "Core Stable Income": "Provides the largest and most reliable portion of monthly income using covered-call strategies on broad market indices. Acts as the defensive backbone of the portfolio.",
     "Quality Dividend Growth": "Focuses on high-quality companies with growing dividends and strong fundamentals. Delivers quarterly income while building long-term capital appreciation and inflation protection.",
@@ -146,6 +146,10 @@ for t in tickers:
     })
 
 df = pd.DataFrame(data)
+
+# ==================== TRANSACTION TRACKER ====================
+if 'transactions' not in st.session_state:
+    st.session_state.transactions = []
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
@@ -252,7 +256,6 @@ elif page == "📋 Holding Details":
         }])
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
 
-        # ==================== UPDATED PAYOUT CHART ====================
         st.subheader(f"📅 Projected Future Payouts for {selected_ticker}")
         today = datetime(2026, 5, 20).date()
         freq = payout_data[selected_ticker]["freq"]
@@ -261,7 +264,6 @@ elif page == "📋 Holding Details":
         dates = []
         amounts = []
         current = today + timedelta(days=7)
-
         for i in range(12):
             if freq == "Weekly":
                 current += timedelta(days=7)
@@ -269,35 +271,16 @@ elif page == "📋 Holding Details":
             elif freq == "Monthly":
                 current = current.replace(day=15) + timedelta(days=30)
                 per_payout = round(annual_payout / 12, 0)
-            else:  # Quarterly
+            else:
                 current += timedelta(days=90)
                 per_payout = round(annual_payout / 4, 0)
             dates.append(current.strftime("%b %d, %Y"))
             amounts.append(per_payout)
 
         chart_df = pd.DataFrame({"Date": dates, "Projected Payout $": amounts})
-
-        fig = px.bar(
-            chart_df, 
-            x="Date", 
-            y="Projected Payout $",
-            title=f"Next 12 Projected Payouts – {selected_ticker}",
-            color_discrete_sequence=["#1f6feb"],
-            text="Projected Payout $"
-        )
-
-        fig.update_traces(
-            texttemplate="$%{y:,.0f}",
-            textposition="outside",
-            width=0.5          # ← 50% bar width (thinner bars)
-        )
-
-        fig.update_layout(
-            xaxis_tickangle=-45,
-            bargap=0.4,        # extra spacing between bars
-            height=480
-        )
-
+        fig = px.bar(chart_df, x="Date", y="Projected Payout $", title=f"Next 12 Projected Payouts – {selected_ticker}", color_discrete_sequence=["#1f6feb"], text="Projected Payout $")
+        fig.update_traces(texttemplate="$%{y:,.0f}", textposition="outside", width=0.5)
+        fig.update_layout(xaxis_tickangle=-45, bargap=0.4, height=480)
         st.plotly_chart(fig, use_container_width=True)
 
 elif page == "📊 Portfolio Combined":
@@ -307,7 +290,7 @@ elif page == "📊 Portfolio Combined":
 elif page == "💸 Reinvestment Strategy":
     st.subheader("💸 Monthly Surplus Reinvestment Strategy")
     st.write("""
-    **Goal**: Automatically roll over any unspent income each month to fight inflation, strengthen the core portfolio, and allow tactical short-term boosts.
+    **Goal**: Roll over unspent income each month to fight inflation, strengthen the core portfolio, and allow tactical short-term boosts.
     
     **Allocation Rule**:
     - 60% → Quality Dividend Growth (SCHD + VIG)
@@ -317,16 +300,36 @@ elif page == "💸 Reinvestment Strategy":
 
     monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="%.0f")
 
-    st.subheader("Distribution for this month")
+    st.subheader("Suggested Distribution")
     col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Quality Dividend Growth (60%)", f"${round(monthly_surplus * 0.60):,.0f}")
-    with col2:
-        st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
-    with col3:
-        st.metric("Tactical High-Risk Boost (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
+    with col1: st.metric("Quality Dividend Growth (60%)", f"${round(monthly_surplus * 0.60):,.0f}")
+    with col2: st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
+    with col3: st.metric("Tactical High-Risk Boost (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
 
-    st.info("These amounts can be manually added to the respective holdings each month.")
+    if st.button("✅ Apply Calculator Output as Transactions", type="primary"):
+        now = datetime.now().strftime("%Y-%m-%d %H:%M")
+        st.session_state.transactions.append({"Date": now, "Bucket": "Quality Dividend Growth", "Amount": round(monthly_surplus * 0.60)})
+        st.session_state.transactions.append({"Date": now, "Bucket": "Core Stable Income", "Amount": round(monthly_surplus * 0.30)})
+        st.session_state.transactions.append({"Date": now, "Bucket": "Tactical High-Risk Boost", "Amount": round(monthly_surplus * 0.10)})
+        st.success("✅ Transactions logged successfully!")
+
+    st.subheader("Manual Transaction Entry")
+    with st.form("manual_transaction"):
+        manual_date = st.date_input("Date", value=datetime.today())
+        manual_bucket = st.selectbox("Bucket", ["Quality Dividend Growth", "Core Stable Income", "Tactical High-Risk Boost"])
+        manual_amount = st.number_input("Amount ($)", value=1000.0, step=100.0, format="%.0f")
+        submitted = st.form_submit_button("Add Manual Transaction")
+        if submitted and manual_amount > 0:
+            st.session_state.transactions.append({"Date": manual_date.strftime("%Y-%m-%d"), "Bucket": manual_bucket, "Amount": manual_amount})
+            st.success("✅ Manual transaction added!")
+
+    st.subheader("📋 Transaction Tracker")
+    if st.session_state.transactions:
+        trans_df = pd.DataFrame(st.session_state.transactions)
+        trans_df = trans_df.sort_values(by="Date", ascending=False)
+        st.dataframe(trans_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("No transactions yet. Use the calculator or manual entry above.")
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

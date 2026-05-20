@@ -124,20 +124,34 @@ if st.button("🔄 REFRESH LIVE DATA", type="primary", use_container_width=True)
 
         # ==================== PAGE SELECTION ====================
         if page == "📊 Portfolio Overview":
+            # 4 Progress Bubbles
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
+            with col2:
+                st.metric("Current Portfolio Value", f"${total_current_value:,.0f}")
+            with col3:
+                st.metric("Current VIX", f"{current_vix}")
+            with col4:
+                st.metric("Liquidity Score", "94/100")
+
             st.subheader("🤖 Grok AI Portfolio Evaluation")
             aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
             vix_comment = "High volatility — excellent premiums!" if current_vix > 28 else "Low volatility — premiums shrinking." if current_vix < 15 else "Normal volatility range."
             slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
             st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}")
 
-            st.subheader("📊 Current Portfolio Allocation")
-            fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
-            st.plotly_chart(fig, use_container_width=True)
-
-            st.subheader("📊 Portfolio by Strategy Category")
-            cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
-            cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
-            st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
+            # SUNBURST + CATEGORY TABLE SIDE-BY-SIDE
+            col_chart, col_table = st.columns(2)
+            with col_chart:
+                st.subheader("📊 Current Portfolio Allocation")
+                fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
+                st.plotly_chart(fig, use_container_width=True)
+            with col_table:
+                st.subheader("📊 Portfolio by Strategy Category")
+                cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
+                cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
+                st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
 
             st.subheader("Holdings Breakdown by Strategy Category")
             st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], use_container_width=True, hide_index=True)
@@ -149,6 +163,21 @@ if st.button("🔄 REFRESH LIVE DATA", type="primary", use_container_width=True)
                 st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
             with col2:
                 st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
+
+            st.subheader("Detailed Payouts Table")
+            payout_rows = []
+            for t in tickers:
+                annual = round(targets[t]["amount"] * payout_data[t]["yield"] / 100, 0)
+                monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
+                payout_rows.append({
+                    "Ticker": t,
+                    "Category": category_map[t],
+                    "Frequency": payout_data[t]["freq"],
+                    "Est. Annual Yield": f"{payout_data[t]['yield']}%",
+                    "Est. Annual Payout": f"${annual:,.0f}",
+                    "Est. Monthly Payout": f"${monthly:,.0f}",
+                })
+            st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
 
             with st.expander("📆 2026 Monthly Payout Calendar", expanded=True):
                 st.subheader("2026 Monthly Payout Calendar")

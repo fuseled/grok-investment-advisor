@@ -26,6 +26,7 @@ page = st.sidebar.radio(
      "💰 Income Projections", 
      "📋 Holding Details",
      "📊 Portfolio Combined",
+     "💸 Surplus & Reinvestment Strategy",
      "🛡️ Guardrails & Alerts"]
 )
 
@@ -127,7 +128,7 @@ df = pd.DataFrame(data)
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
-    # (Your existing overview code)
+    # (Your existing overview code remains unchanged)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -168,20 +169,8 @@ if page == "📊 Portfolio Overview":
 elif page == "💰 Income Projections":
     total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
     col1, col2 = st.columns(2)
-    with col1:
-        st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
-    with col2:
-        st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
-
-    # ==================== NEW: THIS MONTH'S TRACKER ====================
-    st.subheader("📈 Current Month (May 2026)")
-    col_m1, col_m2 = st.columns(2)
-    received_mtd = st.number_input("Received This Month ($)", value=1484.64, step=100.0, key="mtd_received")
-    expected_monthly = round(total_annual / 12, 0)
-    with col_m1:
-        st.metric("Received This Month", f"${received_mtd:,.2f}")
-    with col_m2:
-        st.metric("Expected This Month", f"${expected_monthly:,.0f}")
+    with col1: st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
+    with col2: st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
 
     st.subheader("Detailed Payouts Schedule")
     payout_rows = []
@@ -205,32 +194,6 @@ elif page == "💰 Income Projections":
         })
     st.dataframe(pd.DataFrame(payout_rows), use_container_width=True, hide_index=True)
 
-    with st.expander("📆 2026 Monthly Payout Calendar", expanded=True):
-        st.subheader("2026 Monthly Payout Calendar")
-        months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-        quarterly_months = ["Mar","Jun","Sep","Dec"]
-        cols = st.columns(4)
-        for i, month in enumerate(months):
-            with cols[i % 4]:
-                month_payout = 0
-                paying = []
-                for t in tickers:
-                    annual = targets[t]["amount"] * payout_data[t]["yield"] / 100
-                    if payout_data[t]["freq"] in ["Monthly", "Weekly"]:
-                        month_payout += annual / 12
-                        paying.append(t)
-                    elif payout_data[t]["freq"] == "Quarterly" and month in quarterly_months:
-                        month_payout += annual / 4
-                        paying.append(t)
-                month_payout = round(month_payout, 0)
-                st.markdown(f"""
-                <div class="month-box">
-                    <strong>{month}</strong><br>
-                    <span style="font-size: 1.5em; color:#1f6feb;">${month_payout:,.0f}</span><br>
-                    <small>{', '.join(paying[:3]) if paying else '—'}</small>
-                </div>
-                """, unsafe_allow_html=True)
-
 elif page == "📋 Holding Details":
     st.subheader("📋 Detailed Holding Information")
     selected_ticker = st.selectbox("Select Holding", tickers)
@@ -252,6 +215,34 @@ elif page == "📋 Holding Details":
 elif page == "📊 Portfolio Combined":
     st.subheader("📊 Portfolio Combined View")
     st.dataframe(df, use_container_width=True, hide_index=True)
+
+elif page == "💸 Surplus & Reinvestment Strategy":
+    st.subheader("💸 Monthly Surplus & Reinvestment Strategy")
+    st.write("**Goal**: Rollover unspent income each month, combat inflation, strengthen the portfolio, and allow tactical profit boosts from high-risk ETFs.")
+
+    monthly_surplus = st.number_input("This month's surplus (unspent income)", value=5000.0, step=100.0, format="$%.0f")
+
+    st.subheader("Recommended Reinvestment Allocation")
+    st.write("**Strategy**: 60% inflation protection + growth, 30% stable income, 10% tactical profit-taking from high-risk ETFs.")
+
+    allocation = {
+        "Quality Dividend Growth (SCHD + VIG)": round(monthly_surplus * 0.60, 0),
+        "Core Stable Income (JEPI)": round(monthly_surplus * 0.30, 0),
+        "Tactical High-Risk Boost (YieldMax slice)": round(monthly_surplus * 0.10, 0),
+    }
+
+    alloc_df = pd.DataFrame(list(allocation.items()), columns=["Reinvestment Bucket", "Amount ($)"])
+    st.dataframe(alloc_df, use_container_width=True, hide_index=True)
+
+    st.subheader("Tactical Rules for High-Risk ETFs (Profit Taking)")
+    st.info("""
+    - **Boost** the $100k YieldMax slice only when **VIX > 22** (high volatility = fat premiums)
+    - Take profits and scale back when **VIX drops below 15** for 10+ days
+    - Never let the aggressive slice exceed **7%** of total portfolio
+    - Sell highest-ROC names first (ULTY/MRNY) when trimming
+    """)
+
+    st.caption("This strategy rolls over unspent money, fights inflation through dividend growth, and uses high-risk ETFs for tactical short-term gains.")
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

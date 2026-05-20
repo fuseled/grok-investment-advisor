@@ -2,36 +2,26 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.express as px
+import time
 from datetime import datetime
 
 st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", page_icon="🚀", initial_sidebar_state="expanded")
 
-# ==================== PERMANENT TOP TICKER CSS ====================
+# Dark mode + mobile CSS
 st.markdown("""
 <style>
-    .top-ticker {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        background-color: #0e1117;
-        border-bottom: 2px solid #1f6feb;
-        padding: 8px 20px;
-        z-index: 1000;
-        display: flex;
-        justify-content: space-around;
-        align-items: center;
-        font-size: 1.05em;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    }
-    .ticker-item { text-align: center; }
-    .ticker-label { font-size: 0.85em; opacity: 0.8; }
-    .ticker-value { font-size: 1.3em; font-weight: 600; color: #1f6feb; }
+    .stApp { background-color: #0e1117; color: #fafafa; }
+    .stMetric { background-color: #1a1f2e; border-radius: 12px; padding: 18px; border: 1px solid #2d3748; }
+    .stButton>button { background-color: #1f6feb; color: white; border-radius: 8px; font-weight: 600; padding: 14px 28px; }
+    h1, h2, h3 { color: #ffffff; }
+    .stSidebar { background-color: #161b28; }
+    .month-box { background-color: #1a1f2e; padding: 15px; border-radius: 10px; border: 1px solid #2d3748; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
-# ==================== SIDEBAR NAVIGATION ====================
+# ==================== SIDEBAR ====================
 st.sidebar.title("🚀 Grok AI Advisor")
+auto_refresh = st.sidebar.checkbox("🔄 Auto Refresh Every 60 Seconds", value=True)
 page = st.sidebar.radio(
     "Navigate",
     ["📊 Portfolio Overview", 
@@ -135,48 +125,58 @@ df = pd.DataFrame(data)
 total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
 
 ticker_html = f"""
-<div class="top-ticker">
-    <div class="ticker-item"><span class="ticker-label">VIX</span><br><span class="ticker-value">{current_vix}</span></div>
-    <div class="ticker-item"><span class="ticker-label">Liquidity</span><br><span class="ticker-value">94/100</span></div>
-    <div class="ticker-item"><span class="ticker-label">% Received / Week</span><br><span class="ticker-value">62%</span></div>
-    <div class="ticker-item"><span class="ticker-label">% Received / Month</span><br><span class="ticker-value">45%</span></div>
-    <div class="ticker-item"><span class="ticker-label">% Received / Year</span><br><span class="ticker-value">38%</span></div>
+<div style="position:fixed;top:0;left:0;right:0;background:#0e1117;border-bottom:3px solid #1f6feb;padding:10px 20px;z-index:999;display:flex;justify-content:space-around;align-items:center;font-size:1.1em;box-shadow:0 2px 10px rgba(0,0,0,0.4);">
+    <div><strong>VIX</strong><br>{current_vix}</div>
+    <div><strong>Liquidity</strong><br>94/100</div>
+    <div><strong>% Received / Week</strong><br>62%</div>
+    <div><strong>% Received / Month</strong><br>45%</div>
+    <div><strong>% Received / Year</strong><br>38%</div>
 </div>
 """
 st.markdown(ticker_html, unsafe_allow_html=True)
 
 # ==================== PAGE CONTENT ====================
 if page == "📊 Portfolio Overview":
-    # (your existing overview content here - bubbles, evaluation, sunburst, etc.)
-
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${total_current_value:,.0f}")
     with col3: st.metric("Current VIX", f"{current_vix}")
     with col4: st.metric("Liquidity Score", "94/100")
 
-    # ... rest of overview (sunburst, category table, holdings breakdown)
+    st.subheader("🤖 Grok AI Portfolio Evaluation")
+    aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
+    vix_comment = "High volatility — excellent premiums!" if current_vix > 28 else "Low volatility — premiums shrinking." if current_vix < 15 else "Normal volatility range."
+    slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
+    st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}")
+
+    st.subheader("📊 Current Portfolio Allocation")
+    fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("📊 Portfolio by Strategy Category")
+    cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
+    cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
+    st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
+
+    st.subheader("Holdings Breakdown by Strategy Category")
+    st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], use_container_width=True, hide_index=True)
 
 elif page == "💰 Income Projections":
-    # (your existing income projections content)
-
-    st.subheader("Detailed Payouts Schedule")
-    # ... (your payouts table and monthly calendar)
+    # (your current income projections content can go here)
+    st.info("Income Projections page - add your monthly calendar and progress bars here if you want.")
 
 elif page == "📋 Holding Details":
-    # (your holding details page)
-
     st.subheader("📋 Detailed Holding Information")
     selected = st.selectbox("Select a holding", tickers)
-    # ... (existing holding details code)
+    st.info(f"Details for {selected} would appear here.")
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")
     st.info("All guardrails are currently **GREEN**. No immediate action required.")
 
-st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
+st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')} | Auto-refresh: {'ON' if auto_refresh else 'OFF'}")
 
-# Auto-refresh logic (optional)
-if st.sidebar.checkbox("🔄 Auto Refresh Every 60 Seconds", value=True):
+# ==================== AUTO REFRESH ====================
+if auto_refresh:
     time.sleep(60)
     st.rerun()

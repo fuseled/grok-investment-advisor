@@ -70,20 +70,6 @@ payout_data = {
     "YMAX": {"freq": "Weekly", "yield": 57.0},
 }
 
-# ==================== HOLDING DESCRIPTIONS ====================
-holding_descriptions = {
-    "JEPI": "JPMorgan Equity Premium Income ETF – Uses covered calls on S&P 500 stocks to generate high monthly income with moderate downside protection.",
-    "JEPQ": "JPMorgan Nasdaq Equity Premium Income ETF – Covered call strategy on the Nasdaq-100 for higher monthly income with tech exposure.",
-    "SCHD": "Schwab U.S. Dividend Equity ETF – High-quality U.S. companies with strong dividend growth and financial health.",
-    "VIG": "Vanguard Dividend Appreciation ETF – Companies that have consistently increased dividends for many years.",
-    "SGOV": "iShares 0-3 Month Treasury Bond ETF – Ultra-safe short-term U.S. Treasuries used as a cash buffer.",
-    "NVDY": "YieldMax NVDA Option Income Strategy ETF – High-yield weekly option income on NVIDIA.",
-    "ULTY": "YieldMax Ultra Option Income Strategy ETF – Diversified high-volatility stocks using aggressive option strategies.",
-    "CHPY": "YieldMax Semiconductor Portfolio Option Income ETF – Covered call strategy on major semiconductor companies.",
-    "MRNY": "YieldMax MRNA Option Income Strategy ETF – High-yield weekly option income on Moderna (biotech volatility).",
-    "YMAX": "YieldMax Universe Fund of Option Income ETFs – Diversified basket of multiple YieldMax ETFs."
-}
-
 tickers = list(targets.keys())
 
 @st.cache_data(ttl=60)
@@ -153,40 +139,57 @@ if page == "📊 Portfolio Overview":
     slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
     st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}")
 
-    st.subheader("📊 Current Portfolio Allocation")
-    fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
-    st.plotly_chart(fig, use_container_width=True)
+    # Sunburst + Category Summary side-by-side
+    col_chart, col_table = st.columns(2)
+    with col_chart:
+        st.subheader("📊 Current Portfolio Allocation")
+        fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
+        st.plotly_chart(fig, use_container_width=True)
+    with col_table:
+        st.subheader("📊 Portfolio by Strategy Category")
+        cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
+        cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
+        st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
 
-    st.subheader("📊 Portfolio by Strategy Category")
-    cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
-    cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
-    st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
-
+    # Holdings Breakdown by Strategy Category (with projected $)
     st.subheader("Holdings Breakdown by Strategy Category")
     for cat in ["Core Stable Income", "Quality Dividend Growth", "Cash Buffer", "Aggressive High-Yield"]:
         cat_df = df[df["Category"] == cat].copy()
-        if cat_df.empty: continue
+        if cat_df.empty:
+            continue
         total_value = cat_df["Current Value"].sum()
         total_pct = cat_df["Current_Pct_Numeric"].sum()
+        yearly_expected = round(cat_df["Est. Annual Payout"].str.replace("$","").str.replace(",","").astype(float).sum(), 0)
+        quarterly_expected = round(yearly_expected / 4, 0)
+        monthly_expected = round(yearly_expected / 12, 0)
+
         st.markdown(f"### {cat}")
-        col1, col2 = st.columns(2)
-        with col1: st.metric("Total Value", f"${total_value:,.0f}")
-        with col2: st.metric("Portfolio %", f"{total_pct:.1f}%")
-        st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            st.metric("Total Value", f"${total_value:,.0f}")
+        with col2:
+            st.metric("Portfolio %", f"{total_pct:.1f}%")
+        with col3:
+            st.metric("Expected Yearly $", f"${yearly_expected:,.0f}")
+        with col4:
+            st.metric("Expected Quarterly $", f"${quarterly_expected:,.0f}")
+        with col5:
+            st.metric("Expected Monthly $", f"${monthly_expected:,.0f}")
+
+        st.dataframe(
+            cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]],
+            use_container_width=True,
+            hide_index=True
+        )
         st.markdown("---")
 
 elif page == "💰 Income Projections":
     total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
-    expected_monthly = round(total_annual / 12, 0)
-
-    # NEW: Average Projected Monthly Income bubble
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
     with col2:
         st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
-    with col3:
-        st.metric("**Average Projected Monthly Income**", f"${expected_monthly:,.0f}")
 
     st.subheader("Detailed Payouts Schedule")
     payout_rows = []
@@ -227,10 +230,6 @@ elif page == "📋 Holding Details":
             "Frequency": row["Frequency"],
         }])
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
-
-        # NEW: Description of the holding
-        st.subheader("Description")
-        st.write(holding_descriptions.get(selected_ticker, "No description available."))
 
 elif page == "📊 Portfolio Combined":
     st.subheader("📊 Portfolio Combined View")

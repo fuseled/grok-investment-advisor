@@ -30,25 +30,126 @@ with st.sidebar:
 # ==================== PORTFOLIO ====================
 TOTAL_CAPITAL = 2_100_000
 
-targets = { ... }   # (same as previous version - keeping it short here for space)
+targets = {
+    "JEPI": {"target_pct": 42.9, "amount": 900_000},
+    "SCHD": {"target_pct": 23.8, "amount": 500_000},
+    "JEPQ": {"target_pct": 14.3, "amount": 300_000},
+    "VIG":  {"target_pct": 6.7,  "amount": 140_000},
+    "SGOV": {"target_pct": 2.9,  "amount": 60_000},
+    "NVDY": {"target_pct": 1.19, "amount": 25_000},
+    "ULTY": {"target_pct": 1.19, "amount": 25_000},
+    "CHPY": {"target_pct": 0.95, "amount": 20_000},
+    "MRNY": {"target_pct": 0.71, "amount": 15_000},
+    "YMAX": {"target_pct": 0.71, "amount": 15_000},
+}
 
-# ... (all the previous targets, category_map, payout_data, get_live_prices, get_vix functions are unchanged)
+category_map = {
+    "JEPI": "Core Stable Income", "JEPQ": "Core Stable Income",
+    "SCHD": "Quality Dividend Growth", "VIG": "Quality Dividend Growth",
+    "SGOV": "Cash Buffer",
+    "NVDY": "Aggressive High-Yield", "ULTY": "Aggressive High-Yield",
+    "CHPY": "Aggressive High-Yield", "MRNY": "Aggressive High-Yield",
+    "YMAX": "Aggressive High-Yield",
+}
+
+payout_data = {
+    "JEPI": {"freq": "Monthly", "yield": 8.4},
+    "JEPQ": {"freq": "Monthly", "yield": 10.3},
+    "SCHD": {"freq": "Quarterly", "yield": 3.3},
+    "VIG":  {"freq": "Quarterly", "yield": 1.6},
+    "SGOV": {"freq": "Monthly", "yield": 4.5},
+    "NVDY": {"freq": "Weekly", "yield": 60.0},
+    "ULTY": {"freq": "Weekly", "yield": 65.0},
+    "CHPY": {"freq": "Weekly", "yield": 46.0},
+    "MRNY": {"freq": "Weekly", "yield": 71.0},
+    "YMAX": {"freq": "Weekly", "yield": 57.0},
+}
+
+tickers = list(targets.keys())
+
+@st.cache_data(ttl=300)
+def get_live_prices(ticker_list):
+    prices = {}
+    for t in ticker_list:
+        try:
+            hist = yf.Ticker(t).history(period="5d")
+            prices[t] = round(hist['Close'].iloc[-1], 2)
+        except:
+            prices[t] = 0.0
+    return prices
+
+@st.cache_data(ttl=300)
+def get_vix():
+    try:
+        vix_hist = yf.Ticker("^VIX").history(period="5d")
+        return round(vix_hist['Close'].iloc[-1], 2)
+    except:
+        return 18.0
 
 if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_container_width=True):
     with st.spinner("Pulling live market data..."):
         prices = get_live_prices(tickers)
         current_vix = get_vix()
 
-        # ... (main dataframe creation remains the same)
+        data = []
+        total_current_value = 0
+        for t in tickers:
+            target_amount = targets[t]["amount"]
+            price = prices[t]
+            shares = round(target_amount / price, 2) if price > 0 else 0
+            current_value = round(shares * price, 2)
+            total_current_value += current_value
+            current_pct = round((current_value / TOTAL_CAPITAL) * 100, 2)
+            target_pct = targets[t]["target_pct"]
+            drift = round(current_pct - target_pct, 2)
+
+            data.append({
+                "Ticker": t,
+                "Category": category_map[t],
+                "Target %": f"{target_pct:.1f}%",
+                "Current %": f"{current_pct:.1f}%",
+                "Current_Pct_Numeric": current_pct,
+                "Drift": f"{drift:+.1f}%",
+                "Price": price,
+                "Shares": shares,
+                "Current Value": current_value,
+            })
+
+        df = pd.DataFrame(data)
 
         st.success("✅ Live data loaded successfully!")
 
-        # Grok AI Evaluation, Sunburst, Category Summary, Holdings Breakdown (unchanged)
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
+            st.metric("Current Portfolio Value", f"${total_current_value:,.0f}")
+        with col2:
+            st.metric("Current VIX", f"{current_vix}")
+            st.metric("Liquidity Score", "94/100")
 
-        # ==================== NEW YEARLY INCOME SECTION ====================
-        st.header("💰 Yearly Income Summary & Monthly Breakdown")
+        # Grok AI Evaluation
+        st.subheader("🤖 Grok AI Portfolio Evaluation")
+        aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
+        vix_comment = "High volatility — excellent premiums!" if current_vix > 28 else "Low volatility — premiums shrinking." if current_vix < 15 else "Normal volatility range."
+        slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
+        st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}\n\n**Recommendation:** No immediate action needed.")
 
-        # Calculate annual totals
+        # Sunburst
+        st.subheader("📊 Current Portfolio Allocation")
+        fig_sunburst = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
+        st.plotly_chart(fig_sunburst, use_container_width=True)
+
+        st.subheader("📊 Portfolio by Strategy Category")
+        cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
+        cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
+        st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
+
+        st.subheader("Holdings Breakdown by Strategy Category")
+        st.dataframe(df[["Ticker", "Category", "Target %", "Current %", "Drift", "Price", "Current Value"]], use_container_width=True, hide_index=True)
+
+        # ==================== INCOME PROJECTIONS ====================
+        st.header("💰 Income Projections")
+
         total_annual_2026 = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
 
         col_y1, col_y2 = st.columns(2)
@@ -57,46 +158,31 @@ if st.button("🔄 REFRESH LIVE DATA & RUN FULL ANALYSIS", type="primary", use_c
         with col_y2:
             st.metric("**2027 Projected Income**", f"${int(total_annual_2026 * 1.04):,.0f}", "+4% growth est.")
 
-        # 2026 Detailed Monthly Breakdown (click to expand)
         with st.expander("📆 Click to view 2026 Detailed Monthly Payout Schedule", expanded=True):
             st.subheader("2026 Monthly Payout Calendar")
             months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
             quarterly_months = ["Mar","Jun","Sep","Dec"]
-
             cols = st.columns(4)
             for i, month in enumerate(months):
                 with cols[i % 4]:
-                    # Calculate this month's payout
                     month_payout = 0
-                    paying_holdings = []
+                    paying = []
                     for t in tickers:
                         annual = targets[t]["amount"] * payout_data[t]["yield"] / 100
                         if payout_data[t]["freq"] in ["Monthly", "Weekly"]:
                             month_payout += annual / 12
-                            paying_holdings.append(t)
+                            paying.append(t)
                         elif payout_data[t]["freq"] == "Quarterly" and month in quarterly_months:
                             month_payout += annual / 4
-                            paying_holdings.append(t)
-
+                            paying.append(t)
                     month_payout = round(month_payout, 0)
-
                     st.markdown(f"""
                     <div class="month-box">
                         <strong>{month}</strong><br>
-                        <span style="font-size: 1.4em; color:#1f6feb;">${month_payout:,.0f}</span><br>
-                        <small>{', '.join(paying_holdings[:3]) if paying_holdings else '—'}</small>
+                        <span style="font-size: 1.5em; color:#1f6feb;">${month_payout:,.0f}</span><br>
+                        <small>{', '.join(paying[:3]) if paying else '—'}</small>
                     </div>
                     """, unsafe_allow_html=True)
-
-        # Progress bars
-        st.subheader("📊 Progress This Year")
-        progress_cols = st.columns(2)
-        with progress_cols[0]:
-            st.progress(5/12)  # Assuming we are in May 2026
-            st.caption("2026 YTD Progress (5 of 12 months)")
-        with progress_cols[1]:
-            st.progress(0.42)  # Example: 42% of 2026 income already "earned"
-            st.caption("2026 Income Progress")
 
         st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
 

@@ -147,8 +147,6 @@ for t in tickers:
 
 df = pd.DataFrame(data)
 
-aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
-
 # ==================== TRANSACTION TRACKER ====================
 if 'transactions' not in st.session_state:
     st.session_state.transactions = []
@@ -162,21 +160,10 @@ if page == "📊 Portfolio Overview":
     with col4: st.metric("Liquidity Score", "94/100")
 
     st.subheader("🤖 Grok AI Portfolio Evaluation")
+    aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
     vix_comment = "High volatility — excellent premiums!" if current_vix > 28 else "Low volatility — premiums shrinking." if current_vix < 15 else "Normal volatility range."
     slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
     st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}")
-
-    st.subheader("🔍 AI Analyst: High-Yield ETF Recommendation")
-    if current_vix > 28:
-        rec = "🚀 **ULTY or MRNY** — Highest premiums right now. Strong buy for the tactical slice."
-    elif current_vix > 22:
-        rec = "✅ **NVDY or YMAX** — Excellent balance of yield and stability. Good entry or hold."
-    elif current_vix < 15:
-        rec = "⚠️ **Trim or hold** — Premiums are low. Consider reducing exposure until volatility returns."
-    else:
-        rec = "🟡 **CHPY** — Solid middle-ground choice in current conditions."
-    st.write(rec)
-    st.caption(f"Current aggressive slice: **{aggressive_current:.1f}%** | VIX: **{current_vix}**")
 
     col_chart, col_table = st.columns(2)
     with col_chart:
@@ -308,21 +295,8 @@ elif page == "💸 Reinvestment Strategy":
     **Allocation Rule**:
     - 60% → Quality Dividend Growth (SCHD + VIG)
     - 30% → Core Stable Income (JEPI)
-    - 10% → Tactical High-Risk Boost (YieldMax slice)
+    - 10% → Tactical High-Risk Boost (YieldMax slice: NVDY, ULTY, CHPY, MRNY, YMAX)
     """)
-
-    # AI Analyst on Reinvestment page
-    st.subheader("🔍 AI Analyst: High-Yield ETF Recommendation")
-    if current_vix > 28:
-        rec = "🚀 **ULTY or MRNY** — Highest premiums right now. Strong buy for the tactical slice."
-    elif current_vix > 22:
-        rec = "✅ **NVDY or YMAX** — Excellent balance of yield and stability. Good entry or hold."
-    elif current_vix < 15:
-        rec = "⚠️ **Trim or hold** — Premiums are low. Consider reducing exposure until volatility returns."
-    else:
-        rec = "🟡 **CHPY** — Solid middle-ground choice in current conditions."
-    st.write(rec)
-    st.caption(f"Current aggressive slice: **{aggressive_current:.1f}%** | VIX: **{current_vix}**")
 
     monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="%.0f")
 
@@ -334,28 +308,20 @@ elif page == "💸 Reinvestment Strategy":
 
     if st.button("✅ Apply Calculator Output as Transactions", type="primary"):
         now = datetime.now().strftime("%Y-%m-%d %H:%M")
-        st.session_state.transactions.append({"Date": now, "Bucket": "Quality Dividend Growth", "Asset Purchased": "General", "Amount Purchased": round(monthly_surplus * 0.60), "Add'l Income This Week": "X", "Add'l Income This Month": round(monthly_surplus * 0.60 * 0.084 / 12, 0), "Add'l Income This Year": round(monthly_surplus * 0.60 * 0.084, 0)})
-        st.session_state.transactions.append({"Date": now, "Bucket": "Core Stable Income", "Asset Purchased": "General", "Amount Purchased": round(monthly_surplus * 0.30), "Add'l Income This Week": "X", "Add'l Income This Month": round(monthly_surplus * 0.30 * 0.084 / 12, 0), "Add'l Income This Year": round(monthly_surplus * 0.30 * 0.084, 0)})
-        st.session_state.transactions.append({"Date": now, "Bucket": "Tactical High-Risk Boost", "Asset Purchased": "General", "Amount Purchased": round(monthly_surplus * 0.10), "Add'l Income This Week": "X", "Add'l Income This Month": round(monthly_surplus * 0.10 * 0.60 / 12, 0), "Add'l Income This Year": round(monthly_surplus * 0.10 * 0.60, 0)})
+        st.session_state.transactions.append({"Date": now, "Bucket": "Quality Dividend Growth", "Amount": round(monthly_surplus * 0.60)})
+        st.session_state.transactions.append({"Date": now, "Bucket": "Core Stable Income", "Amount": round(monthly_surplus * 0.30)})
+        st.session_state.transactions.append({"Date": now, "Bucket": "Tactical High-Risk Boost", "Amount": round(monthly_surplus * 0.10)})
         st.success("✅ Transactions logged successfully!")
 
-    st.subheader("🔥 High-Yield Specific Purchase")
-    with st.form("high_yield_form"):
-        hy_date = st.date_input("Date", value=datetime.today())
-        hy_asset = st.selectbox("Asset Purchased", ["NVDY", "ULTY", "CHPY", "MRNY", "YMAX"])
-        hy_amount = st.number_input("Amount Purchased ($)", value=1000.0, step=100.0, format="%.0f")
-        submitted = st.form_submit_button("Add High-Yield Purchase")
-        if submitted and hy_amount > 0:
-            st.session_state.transactions.append({
-                "Date": hy_date.strftime("%Y-%m-%d"),
-                "Bucket": "Tactical High-Risk Boost",
-                "Asset Purchased": hy_asset,
-                "Amount Purchased": hy_amount,
-                "Add'l Income This Week": round(hy_amount * payout_data[hy_asset]["yield"] / 100 / 52, 0),
-                "Add'l Income This Month": round(hy_amount * payout_data[hy_asset]["yield"] / 100 / 12, 0),
-                "Add'l Income This Year": round(hy_amount * payout_data[hy_asset]["yield"] / 100, 0)
-            })
-            st.success(f"✅ High-yield purchase of {hy_asset} logged!")
+    st.subheader("Manual Transaction Entry")
+    with st.form("manual_transaction"):
+        manual_date = st.date_input("Date", value=datetime.today())
+        manual_bucket = st.selectbox("Bucket", ["Quality Dividend Growth", "Core Stable Income", "Tactical High-Risk Boost"])
+        manual_amount = st.number_input("Amount ($)", value=1000.0, step=100.0, format="%.0f")
+        submitted = st.form_submit_button("Add Manual Transaction")
+        if submitted and manual_amount > 0:
+            st.session_state.transactions.append({"Date": manual_date.strftime("%Y-%m-%d"), "Bucket": manual_bucket, "Amount": manual_amount})
+            st.success("✅ Manual transaction added!")
 
     st.subheader("📋 Transaction Tracker")
     if st.session_state.transactions:
@@ -363,7 +329,7 @@ elif page == "💸 Reinvestment Strategy":
         trans_df = trans_df.sort_values(by="Date", ascending=False)
         st.dataframe(trans_df, use_container_width=True, hide_index=True)
     else:
-        st.info("No transactions yet. Use the calculator or high-yield form above.")
+        st.info("No transactions yet. Use the calculator or manual entry above.")
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

@@ -31,7 +31,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==================== SIDEBAR NAVIGATION ====================
-st.sidebar.title("Grok AI Advisor")
+st.sidebar.title("CASH AdvIsor")
 page = st.sidebar.radio(
     "Navigate",
     ["Portfolio Overview",

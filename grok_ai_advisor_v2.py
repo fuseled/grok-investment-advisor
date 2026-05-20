@@ -6,7 +6,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", page_icon="📈", initial_sidebar_state="expanded")
 
-# Tight professional styling - header flush to top
+# Tight professional styling - header flush to top + LARGER sidebar navigation
 st.markdown("""
 <style>
     .stApp { 
@@ -27,6 +27,23 @@ st.markdown("""
         padding-top: 0 !important; 
     }
     .stSidebar { background-color: #161b28; }
+    
+    /* INCREASED SIZE OF TOOLBAR / SIDEBAR NAVIGATION ITEMS */
+    .stSidebar .stRadio label {
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        padding: 14px 0 !important;
+        line-height: 1.4;
+    }
+    .stSidebar .stRadio label div {
+        font-size: 1.35rem !important;
+    }
+    .stSidebar .stRadio > div {
+        gap: 8px !important;
+    }
+    .stSidebar .stRadio {
+        padding-top: 10px !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 

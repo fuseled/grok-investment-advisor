@@ -15,7 +15,6 @@ st.markdown("""
     h1, h2, h3 { color: #ffffff; }
     .stSidebar { background-color: #161b28; }
     .month-box { background-color: #1a1f2e; padding: 15px; border-radius: 10px; border: 1px solid #2d3748; text-align: center; }
-    .bold-total { font-weight: bold; background-color: #2d3748; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -258,11 +257,11 @@ elif page == "💸 Reinvestment Strategy":
     edited_hy = st.data_editor(hy_df, use_container_width=True, hide_index=True, num_rows="fixed")
     st.session_state.high_yield_tracker = edited_hy
 
-    # Add bold total row
-    total_hy = edited_hy.sum(numeric_only=True)
-    total_hy["Asset"] = "**TOTAL**"
-    total_df_hy = pd.concat([edited_hy, pd.DataFrame([total_hy])], ignore_index=True)
-    st.dataframe(total_df_hy.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748'] * len(x) if x.name == len(total_df_hy)-1 else [''] * len(x), axis=1), use_container_width=True, hide_index=True)
+    # Add bold TOTAL row
+    total_row = edited_hy.sum(numeric_only=True)
+    total_row["Asset"] = "**TOTAL**"
+    total_df = pd.concat([edited_hy, pd.DataFrame([total_row])], ignore_index=True)
+    st.dataframe(total_df.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748']*len(x) if x.name == len(total_df)-1 else ['']*len(x), axis=1), use_container_width=True, hide_index=True)
 
     # ==================== CORE STABLE TRACKER ====================
     st.subheader("🛡️ Core Stable Holdings Tracker")
@@ -273,10 +272,10 @@ elif page == "💸 Reinvestment Strategy":
     edited_cs = st.data_editor(cs_df, use_container_width=True, hide_index=True, num_rows="fixed")
     st.session_state.core_stable_tracker = edited_cs
 
-    total_cs = edited_cs.sum(numeric_only=True)
-    total_cs["Asset"] = "**TOTAL**"
-    total_df_cs = pd.concat([edited_cs, pd.DataFrame([total_cs])], ignore_index=True)
-    st.dataframe(total_df_cs.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748'] * len(x) if x.name == len(total_df_cs)-1 else [''] * len(x), axis=1), use_container_width=True, hide_index=True)
+    total_row = edited_cs.sum(numeric_only=True)
+    total_row["Asset"] = "**TOTAL**"
+    total_df = pd.concat([edited_cs, pd.DataFrame([total_row])], ignore_index=True)
+    st.dataframe(total_df.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748']*len(x) if x.name == len(total_df)-1 else ['']*len(x), axis=1), use_container_width=True, hide_index=True)
 
     # ==================== QUALITY GROWTH TRACKER ====================
     st.subheader("🌱 Quality Dividend Growth Holdings Tracker")
@@ -287,10 +286,10 @@ elif page == "💸 Reinvestment Strategy":
     edited_qg = st.data_editor(qg_df, use_container_width=True, hide_index=True, num_rows="fixed")
     st.session_state.quality_growth_tracker = edited_qg
 
-    total_qg = edited_qg.sum(numeric_only=True)
-    total_qg["Asset"] = "**TOTAL**"
-    total_df_qg = pd.concat([edited_qg, pd.DataFrame([total_qg])], ignore_index=True)
-    st.dataframe(total_df_qg.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748'] * len(x) if x.name == len(total_df_qg)-1 else [''] * len(x), axis=1), use_container_width=True, hide_index=True)
+    total_row = edited_qg.sum(numeric_only=True)
+    total_row["Asset"] = "**TOTAL**"
+    total_df = pd.concat([edited_qg, pd.DataFrame([total_row])], ignore_index=True)
+    st.dataframe(total_df.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748']*len(x) if x.name == len(total_df)-1 else ['']*len(x), axis=1), use_container_width=True, hide_index=True)
 
 elif page == "🛡️ Guardrails & Alerts":
     st.subheader("🛡️ Proactive Guardrails")

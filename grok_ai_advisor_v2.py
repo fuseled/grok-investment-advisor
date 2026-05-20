@@ -2,9 +2,9 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.express as px
-from datetime import datetime, timedelta
+from datetime import datetime
 
-st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", page_icon="🚀", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", page_icon="📈", initial_sidebar_state="expanded")
 
 # Dark mode + mobile CSS
 st.markdown("""
@@ -14,20 +14,19 @@ st.markdown("""
     .stButton>button { background-color: #1f6feb; color: white; border-radius: 8px; font-weight: 600; padding: 14px 28px; }
     h1, h2, h3 { color: #ffffff; }
     .stSidebar { background-color: #161b28; }
-    .month-box { background-color: #1a1f2e; padding: 15px; border-radius: 10px; border: 1px solid #2d3748; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
 # ==================== SIDEBAR NAVIGATION ====================
-st.sidebar.title("🚀 Grok AI Advisor")
+st.sidebar.title("Grok AI Advisor")
 page = st.sidebar.radio(
     "Navigate",
-    ["📊 Portfolio Overview", 
-     "💰 Income Projections", 
-     "📋 Holding Details",
-     "📊 Portfolio Combined",
-     "💸 Reinvestment Strategy",
-     "🛡️ Guardrails & Alerts"]
+    ["Portfolio Overview",
+     "Income Projections",
+     "Holding Details",
+     "Portfolio Combined",
+     "Reinvestment Strategy",
+     "Guardrails & Alerts"]
 )
 
 st.title("Grok AI Investment Advisor v2")
@@ -40,8 +39,8 @@ targets = {
     "JEPI": {"target_pct": 42.9, "amount": 900_000},
     "SCHD": {"target_pct": 23.8, "amount": 500_000},
     "JEPQ": {"target_pct": 14.3, "amount": 300_000},
-    "VIG":  {"target_pct": 6.7,  "amount": 140_000},
-    "SGOV": {"target_pct": 2.9,  "amount": 60_000},
+    "VIG": {"target_pct": 6.7, "amount": 140_000},
+    "SGOV": {"target_pct": 2.9, "amount": 60_000},
     "NVDY": {"target_pct": 1.19, "amount": 25_000},
     "ULTY": {"target_pct": 1.19, "amount": 25_000},
     "CHPY": {"target_pct": 0.95, "amount": 20_000},
@@ -62,7 +61,7 @@ payout_data = {
     "JEPI": {"freq": "Monthly", "yield": 8.4},
     "JEPQ": {"freq": "Monthly", "yield": 10.3},
     "SCHD": {"freq": "Quarterly", "yield": 3.3},
-    "VIG":  {"freq": "Quarterly", "yield": 1.6},
+    "VIG": {"freq": "Quarterly", "yield": 1.6},
     "SGOV": {"freq": "Monthly", "yield": 4.5},
     "NVDY": {"freq": "Weekly", "yield": 60.0},
     "ULTY": {"freq": "Weekly", "yield": 65.0},
@@ -71,7 +70,6 @@ payout_data = {
     "YMAX": {"freq": "Weekly", "yield": 57.0},
 }
 
-# ==================== DESCRIPTIONS ====================
 category_descriptions = {
     "Core Stable Income": "Provides the largest and most reliable portion of monthly income using covered-call strategies on broad market indices. Acts as the defensive backbone of the portfolio.",
     "Quality Dividend Growth": "Focuses on high-quality companies with growing dividends and strong fundamentals. Delivers quarterly income while building long-term capital appreciation and inflation protection.",
@@ -128,7 +126,6 @@ for t in tickers:
     drift = round(current_pct - target_pct, 2)
     annual = round(target_amount * payout_data[t]["yield"] / 100, 0)
     monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
-
     data.append({
         "Ticker": t,
         "Category": category_map[t],
@@ -146,64 +143,63 @@ for t in tickers:
     })
 
 df = pd.DataFrame(data)
-
 aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]["Current_Pct_Numeric"].sum()
 
 # ==================== TRACKERS ($1k starter each) ====================
 if 'high_yield_tracker' not in st.session_state:
-    st.session_state.high_yield_tracker = [
-        {"Asset": "NVDY", "Position": 1000, "Action": "Keep"},
-        {"Asset": "ULTY", "Position": 1000, "Action": "Keep"},
-        {"Asset": "CHPY", "Position": 1000, "Action": "Keep"},
-        {"Asset": "MRNY", "Position": 1000, "Action": "Keep"},
-        {"Asset": "YMAX", "Position": 1000, "Action": "Keep"}
-    ]
+    st.session_state.high_yield_tracker = pd.DataFrame([
+        {"Asset": "NVDY", "Position": 1000, "Payments_Made": 0},
+        {"Asset": "ULTY", "Position": 1000, "Payments_Made": 0},
+        {"Asset": "CHPY", "Position": 1000, "Payments_Made": 0},
+        {"Asset": "MRNY", "Position": 1000, "Payments_Made": 0},
+        {"Asset": "YMAX", "Position": 1000, "Payments_Made": 0}
+    ])
 
 if 'core_stable_tracker' not in st.session_state:
-    st.session_state.core_stable_tracker = [
-        {"Asset": "JEPI", "Position": 1000, "Action": "Keep"},
-        {"Asset": "JEPQ", "Position": 1000, "Action": "Keep"}
-    ]
+    st.session_state.core_stable_tracker = pd.DataFrame([
+        {"Asset": "JEPI", "Position": 1000, "Payments_Made": 0},
+        {"Asset": "JEPQ", "Position": 1000, "Payments_Made": 0}
+    ])
 
 if 'quality_growth_tracker' not in st.session_state:
-    st.session_state.quality_growth_tracker = [
-        {"Asset": "SCHD", "Position": 1000, "Action": "Keep"},
-        {"Asset": "VIG", "Position": 1000, "Action": "Keep"}
-    ]
+    st.session_state.quality_growth_tracker = pd.DataFrame([
+        {"Asset": "SCHD", "Position": 1000, "Payments_Made": 0},
+        {"Asset": "VIG", "Position": 1000, "Payments_Made": 0}
+    ])
 
 # ==================== PAGE SELECTION ====================
-if page == "📊 Portfolio Overview":
-    # (full overview code with AI Analyst)
+if page == "Portfolio Overview":
+    # (your full overview code remains unchanged)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
     with col3: st.metric("Current VIX", f"{current_vix}")
     with col4: st.metric("Liquidity Score", "94/100")
 
-    st.subheader("🤖 Grok AI Portfolio Evaluation")
+    st.subheader("Grok AI Portfolio Evaluation")
     vix_comment = "High volatility — excellent premiums!" if current_vix > 28 else "Low volatility — premiums shrinking." if current_vix < 15 else "Normal volatility range."
     slice_comment = "Overweight — consider trimming." if aggressive_current > 6.0 else "Underweight — safe to add." if aggressive_current < 4.0 else "Right on target."
     st.info(f"**Overall Condition:** Healthy.\n\nVIX is **{current_vix}** → {vix_comment}\n\nAggressive slice is **{aggressive_current:.1f}%** → {slice_comment}")
 
-    st.subheader("🔍 AI Analyst: High-Yield ETF Recommendation")
+    st.subheader("AI Analyst: High-Yield ETF Recommendation")
     if current_vix > 28:
-        rec = "🚀 **ULTY or MRNY** — Highest premiums right now. Strong buy."
+        rec = "**ULTY or MRNY** — Highest premiums right now. Strong buy."
     elif current_vix > 22:
-        rec = "✅ **NVDY or YMAX** — Excellent balance. Good to hold or add."
+        rec = "**NVDY or YMAX** — Excellent balance. Good to hold or add."
     elif current_vix < 15:
-        rec = "⚠️ **Trim** — Premiums are low."
+        rec = "**Trim** — Premiums are low."
     else:
-        rec = "🟡 **CHPY** — Solid middle-ground choice."
+        rec = "**CHPY** — Solid middle-ground choice."
     st.write(rec)
     st.caption(f"Current aggressive slice: **{aggressive_current:.1f}%** | VIX: **{current_vix}**")
 
     col_chart, col_table = st.columns(2)
     with col_chart:
-        st.subheader("📊 Current Portfolio Allocation")
+        st.subheader("Current Portfolio Allocation")
         fig = px.sunburst(df, path=['Category', 'Ticker'], values='Current Value', title="Category → Holdings", color='Category')
         st.plotly_chart(fig, use_container_width=True)
     with col_table:
-        st.subheader("📊 Portfolio by Strategy Category")
+        st.subheader("Portfolio by Strategy Category")
         cat_summary = df.groupby("Category").agg({"Current Value": "sum", "Current_Pct_Numeric": "sum"}).round(2)
         cat_summary = cat_summary.rename(columns={"Current_Pct_Numeric": "Portfolio %"})
         st.dataframe(cat_summary.style.format({"Current Value": "${:,.0f}", "Portfolio %": "{:.1f}%"}), use_container_width=True)
@@ -231,86 +227,92 @@ if page == "📊 Portfolio Overview":
         st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
         st.markdown("---")
 
-elif page == "💸 Reinvestment Strategy":
-    st.subheader("💸 Monthly Surplus Reinvestment Strategy")
+elif page == "Income Projections":
+    st.subheader("Income Projections")
+    total_annual = round(df["Est. Annual Payout"].str.replace("$","").str.replace(",","").astype(float).sum(), 0)
+    total_monthly = round(total_annual / 12, 0)
+    st.metric("**2026 Projected Annual Income**", f"${total_annual:,.0f}", f"Average Monthly: ${total_monthly:,.0f}")
+    st.dataframe(df[["Ticker", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
+
+elif page == "Holding Details":
+    st.subheader("Detailed Holding Information")
+    selected_ticker = st.selectbox("Select Holding", tickers)
+    if selected_ticker:
+        row = df[df["Ticker"] == selected_ticker].iloc[0]
+        st.subheader(f"{selected_ticker} Details")
+        st.markdown(holding_descriptions[selected_ticker])
+        detail_df = pd.DataFrame([{
+            "Ticker": row["Ticker"],
+            "Category": row["Category"],
+            "Current Value": f"${row['Current Value']:,.0f}",
+            "Portfolio %": row["Current %"],
+            "Est. Annual Yield": row["Est. Annual Yield"],
+            "Est. Annual Payout": row["Est. Annual Payout"],
+            "Est. Monthly Payout": row["Est. Monthly Payout"],
+            "Frequency": row["Frequency"],
+        }])
+        st.dataframe(detail_df, use_container_width=True, hide_index=True)
+
+elif page == "Portfolio Combined":
+    st.subheader("Portfolio Combined View")
+    st.dataframe(df, use_container_width=True, hide_index=True)
+
+elif page == "Reinvestment Strategy":
+    st.subheader("Monthly Surplus Reinvestment Strategy")
     st.write("""
     **Allocation Rule**:
     - 60% → High-Yield Slice
     - 30% → Core Stable Income
     - 10% → Quality Dividend Growth
     """)
-
     monthly_surplus = st.number_input("Enter this month's surplus ($)", value=5000.0, step=100.0, format="%.0f")
-
     st.subheader("Suggested Distribution")
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("High-Yield Slice (60%)", f"${round(monthly_surplus * 0.60):,.0f}")
     with col2: st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
     with col3: st.metric("Quality Dividend Growth (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
 
-    # ==================== HIGH-YIELD SECTION ====================
-    st.subheader("🔥 High-Yield Specific Purchase")
-    st.subheader("🔍 AI Advisor for High-Yield Slice")
-    if current_vix > 28:
-        rec = "🚀 **ULTY or MRNY** — Highest premiums right now. Strong buy."
-    elif current_vix > 22:
-        rec = "✅ **NVDY or YMAX** — Excellent balance. Good to hold or add."
-    elif current_vix < 15:
-        rec = "⚠️ **Trim** — Premiums are low."
-    else:
-        rec = "🟡 **CHPY** — Solid middle-ground choice."
-    st.write(rec)
-
-    with st.form("high_yield_form"):
-        hy_date = st.date_input("Date", value=datetime.today(), key="hy_date")
-        hy_asset = st.selectbox("Asset Purchased", ["NVDY", "ULTY", "CHPY", "MRNY", "YMAX"], key="hy_asset")
-        hy_amount = st.number_input("Amount Purchased ($)", value=1000.0, step=100.0, format="%.0f", key="hy_amount")
-        if st.form_submit_button("Add High-Yield Purchase"):
-            st.session_state.high_yield_tracker.append({"Asset": hy_asset, "Position": hy_amount, "Action": "Buy"})
-            st.success(f"✅ {hy_asset} purchase logged!")
-
+    # HIGH-YIELD TRACKER
     st.subheader("High-Yield Holdings Tracker ($1k starter each)")
-    st.dataframe(pd.DataFrame(st.session_state.high_yield_tracker), use_container_width=True, hide_index=True)
+    hy_df = st.session_state.high_yield_tracker.copy()
+    hy_df["# Shares"] = hy_df["Position"] / hy_df["Asset"].map(lambda a: prices.get(a, 1))
+    hy_df["Est Monthly Payout $"] = hy_df["Position"] * hy_df["Asset"].map(lambda a: payout_data.get(a, {"yield": 0})["yield"] / 100 / 12)
+    hy_df = hy_df[["Asset", "Position", "# Shares", "Est Monthly Payout $", "Payments_Made"]]
+    edited_hy = st.data_editor(hy_df, use_container_width=True, hide_index=True, num_rows="fixed")
+    st.session_state.high_yield_tracker = edited_hy
+    total_row = edited_hy.sum(numeric_only=True)
+    total_row["Asset"] = "**Totals**"
+    total_df = pd.concat([edited_hy, pd.DataFrame([total_row])], ignore_index=True)
+    st.dataframe(total_df.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748']*len(x) if x.name == len(total_df)-1 else ['']*len(x), axis=1), use_container_width=True, hide_index=True)
 
-    # ==================== CORE STABLE SECTION ====================
-    st.subheader("🛡️ Core Stable Specific Purchase")
-    st.subheader("🔍 AI Advisor for Core Stable Income")
-    if current_vix > 22:
-        rec = "✅ **JEPQ** — Higher income in volatile markets."
-    else:
-        rec = "🛡️ **JEPI** — More stable and defensive choice."
-    st.write(rec)
-
-    with st.form("core_stable_form"):
-        cs_date = st.date_input("Date", value=datetime.today(), key="cs_date")
-        cs_asset = st.selectbox("Asset Purchased", ["JEPI", "JEPQ"], key="cs_asset")
-        cs_amount = st.number_input("Amount Purchased ($)", value=1000.0, step=100.0, format="%.0f", key="cs_amount")
-        if st.form_submit_button("Add Core Stable Purchase"):
-            st.session_state.core_stable_tracker.append({"Asset": cs_asset, "Position": cs_amount, "Action": "Buy"})
-            st.success(f"✅ {cs_asset} purchase logged!")
-
+    # CORE STABLE TRACKER
     st.subheader("Core Stable Holdings Tracker ($1k starter each)")
-    st.dataframe(pd.DataFrame(st.session_state.core_stable_tracker), use_container_width=True, hide_index=True)
+    cs_df = st.session_state.core_stable_tracker.copy()
+    cs_df["# Shares"] = cs_df["Position"] / cs_df["Asset"].map(lambda a: prices.get(a, 1))
+    cs_df["Est Monthly Payout $"] = cs_df["Position"] * cs_df["Asset"].map(lambda a: payout_data.get(a, {"yield": 0})["yield"] / 100 / 12)
+    cs_df = cs_df[["Asset", "Position", "# Shares", "Est Monthly Payout $", "Payments_Made"]]
+    edited_cs = st.data_editor(cs_df, use_container_width=True, hide_index=True, num_rows="fixed")
+    st.session_state.core_stable_tracker = edited_cs
+    total_row = edited_cs.sum(numeric_only=True)
+    total_row["Asset"] = "**Totals**"
+    total_df = pd.concat([edited_cs, pd.DataFrame([total_row])], ignore_index=True)
+    st.dataframe(total_df.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748']*len(x) if x.name == len(total_df)-1 else ['']*len(x), axis=1), use_container_width=True, hide_index=True)
 
-    # ==================== QUALITY GROWTH SECTION ====================
-    st.subheader("🌱 Quality Dividend Growth Specific Purchase")
-    st.subheader("🔍 AI Advisor for Quality Dividend Growth")
-    rec = "✅ **SCHD** — Strong income + quality focus. VIG for more growth-oriented exposure."
-    st.write(rec)
-
-    with st.form("growth_form"):
-        qd_date = st.date_input("Date", value=datetime.today(), key="qd_date")
-        qd_asset = st.selectbox("Asset Purchased", ["SCHD", "VIG"], key="qd_asset")
-        qd_amount = st.number_input("Amount Purchased ($)", value=1000.0, step=100.0, format="%.0f", key="qd_amount")
-        if st.form_submit_button("Add Growth Purchase"):
-            st.session_state.quality_growth_tracker.append({"Asset": qd_asset, "Position": qd_amount, "Action": "Buy"})
-            st.success(f"✅ {qd_asset} purchase logged!")
-
+    # QUALITY GROWTH TRACKER
     st.subheader("Quality Dividend Growth Holdings Tracker ($1k starter each)")
-    st.dataframe(pd.DataFrame(st.session_state.quality_growth_tracker), use_container_width=True, hide_index=True)
+    qg_df = st.session_state.quality_growth_tracker.copy()
+    qg_df["# Shares"] = qg_df["Position"] / qg_df["Asset"].map(lambda a: prices.get(a, 1))
+    qg_df["Est Monthly Payout $"] = qg_df["Position"] * qg_df["Asset"].map(lambda a: payout_data.get(a, {"yield": 0})["yield"] / 100 / 12)
+    qg_df = qg_df[["Asset", "Position", "# Shares", "Est Monthly Payout $", "Payments_Made"]]
+    edited_qg = st.data_editor(qg_df, use_container_width=True, hide_index=True, num_rows="fixed")
+    st.session_state.quality_growth_tracker = edited_qg
+    total_row = edited_qg.sum(numeric_only=True)
+    total_row["Asset"] = "**Totals**"
+    total_df = pd.concat([edited_qg, pd.DataFrame([total_row])], ignore_index=True)
+    st.dataframe(total_df.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748']*len(x) if x.name == len(total_df)-1 else ['']*len(x), axis=1), use_container_width=True, hide_index=True)
 
-elif page == "🛡️ Guardrails & Alerts":
-    st.subheader("🛡️ Proactive Guardrails")
-    st.info("All guardrails are currently **GREEN**. No immediate action required.")
+elif page == "Guardrails & Alerts":
+    st.subheader("Proactive Guardrails")
+    st.info("All guardrails are currently GREEN. No immediate action required.")
 
 st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")

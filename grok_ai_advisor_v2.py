@@ -26,7 +26,7 @@ page = st.sidebar.radio(
 )
 
 st.title("Grok AI Investment Advisor v2")
-st.markdown("**$2.1M Portfolio → ~$190k/year** | Built for Jay")
+st.markdown("**$2.1M Portfolio → \~$190k/year** | Built for Jay")
 
 # ==================== PORTFOLIO DATA ====================
 TOTAL_CAPITAL = 2_100_000
@@ -130,7 +130,6 @@ if 'quality_growth_tracker' not in st.session_state:
 
 # ==================== PAGES ====================
 if page == "Portfolio Overview":
-    # (full restored Portfolio Overview as you liked)
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${current_portfolio_value:,.0f}")
@@ -172,11 +171,12 @@ if page == "Portfolio Overview":
         total_value = cat_df["Current Value"].sum()
         total_pct = cat_df["Current %"].sum()
         yearly_expected = round(cat_df["Est. Annual Payout"].sum(), 0)
+
         st.markdown(f"### {cat}")
         col1, col2, col3 = st.columns(3)
         with col1: st.metric("Total Value", f"${total_value:,.0f}")
         with col2: st.metric("Portfolio %", f"{total_pct:.1f}%")
-        with col3: st.metric("Expected Yearly $", f"${yearly_expected:,.0f}")
+        with col3: st.metric("Expected Yearly \( ", f" \){yearly_expected:,.0f}")
         st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Payout"]], use_container_width=True, hide_index=True)
         st.markdown("---")
 
@@ -184,6 +184,16 @@ elif page == "Income Projections":
     st.subheader("Income Projections")
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("**2026 Projected Gross Annual Income**", f"${total_annual:,.0f}", f"Average Monthly: ${round(total_annual/12):,.0f}")
+    
+    st.subheader("Projected Tax Owed")
+    tax_rate = st.number_input("Assumed Combined Effective Tax Rate (%)", value=35.0, step=0.5)
+    estimated_tax_annual = round(total_annual * (tax_rate / 100), 0)
+    estimated_tax_monthly = round(estimated_tax_annual / 12, 0)
+    net_annual = round(total_annual - estimated_tax_annual, 0)
+    col_tax1, col_tax2, col_tax3 = st.columns(3)
+    with col_tax1: st.metric("**Estimated Taxes Owed (Yearly)**", f"${estimated_tax_annual:,.0f}")
+    with col_tax2: st.metric("**Estimated Taxes Owed (Monthly)**", f"${estimated_tax_monthly:,.0f}")
+    with col_tax3: st.metric("**Net After-Tax Income (Yearly)**", f"${net_annual:,.0f}")
 
 elif page == "Future Portfolio":
     st.subheader("Future Portfolio Outlook")
@@ -199,6 +209,19 @@ elif page == "Future Portfolio":
 elif page == "Tax Prep":
     st.subheader("Tax Prep & Quarterly Planning")
     st.caption("Strategy to minimize idle cash while staying compliant.")
+    st.markdown("### 1. Current Year Tax Estimate")
+    col1, col2, col3 = st.columns(3)
+    with col1: st.metric("Gross Annual Distributions", f"${total_annual:,.0f}")
+    with col2: st.metric("Est. Taxable Portion (after ROC)", f"${round(total_annual * 0.65):,.0f}")
+    with col3: st.metric("Est. Tax Owed @ 35%", f"${round(total_annual * 0.65 * 0.35):,.0f}")
+
+    st.markdown("### 2. 110% Safe Harbor Quarterly Payments")
+    last_year_tax = st.number_input("What was your total tax bill last year?", value=42000, step=1000)
+    safe_harbor_annual = round(last_year_tax * 1.10, 0)
+    quarterly_payment = round(safe_harbor_annual / 4, 0)
+    col1, col2, col3 = st.columns(3)
+    with col1: st.metric("110% Safe Harbor Total", f"${safe_harbor_annual:,.0f}")
+    with col2: st.metric("Quarterly Payment", f"${quarterly_payment:,.0f}")
 
 elif page == "Reinvestment Strategy":
     st.subheader("Monthly Surplus Reinvestment Strategy")

@@ -70,6 +70,20 @@ payout_data = {
     "YMAX": {"freq": "Weekly", "yield": 57.0},
 }
 
+# ==================== HOLDING DESCRIPTIONS ====================
+holding_descriptions = {
+    "JEPI": "JPMorgan Equity Premium Income ETF – Uses covered calls on S&P 500 stocks to generate high monthly income with moderate downside protection.",
+    "JEPQ": "JPMorgan Nasdaq Equity Premium Income ETF – Covered call strategy on the Nasdaq-100 for higher monthly income with tech exposure.",
+    "SCHD": "Schwab U.S. Dividend Equity ETF – High-quality U.S. companies with strong dividend growth and financial health.",
+    "VIG": "Vanguard Dividend Appreciation ETF – Companies that have consistently increased dividends for many years.",
+    "SGOV": "iShares 0-3 Month Treasury Bond ETF – Ultra-safe short-term U.S. Treasuries used as a cash buffer.",
+    "NVDY": "YieldMax NVDA Option Income Strategy ETF – High-yield weekly option income on NVIDIA.",
+    "ULTY": "YieldMax Ultra Option Income Strategy ETF – Diversified high-volatility stocks using aggressive option strategies.",
+    "CHPY": "YieldMax Semiconductor Portfolio Option Income ETF – Covered call strategy on major semiconductor companies.",
+    "MRNY": "YieldMax MRNA Option Income Strategy ETF – High-yield weekly option income on Moderna (biotech volatility).",
+    "YMAX": "YieldMax Universe Fund of Option Income ETFs – Diversified basket of multiple YieldMax ETFs."
+}
+
 tickers = list(targets.keys())
 
 @st.cache_data(ttl=60)
@@ -127,7 +141,6 @@ df = pd.DataFrame(data)
 
 # ==================== PAGE SELECTION ====================
 if page == "📊 Portfolio Overview":
-    # (Your existing overview code)
     col1, col2, col3, col4 = st.columns(4)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${df['Current Value'].sum():,.0f}")
@@ -166,14 +179,14 @@ elif page == "💰 Income Projections":
     total_annual = round(sum(targets[t]["amount"] * payout_data[t]["yield"] / 100 for t in tickers), 0)
     expected_monthly = round(total_annual / 12, 0)
 
-    # Top row with Yearly + Monthly
+    # NEW: Average Projected Monthly Income bubble
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("**2026 Projected Income**", f"${total_annual:,.0f}")
     with col2:
         st.metric("**2027 Projected Income**", f"${int(total_annual * 1.04):,.0f}", "+4% growth est.")
     with col3:
-        st.metric("**Expected Monthly Income**", f"${expected_monthly:,.0f}")
+        st.metric("**Average Projected Monthly Income**", f"${expected_monthly:,.0f}")
 
     st.subheader("Detailed Payouts Schedule")
     payout_rows = []
@@ -214,6 +227,10 @@ elif page == "📋 Holding Details":
             "Frequency": row["Frequency"],
         }])
         st.dataframe(detail_df, use_container_width=True, hide_index=True)
+
+        # NEW: Description of the holding
+        st.subheader("Description")
+        st.write(holding_descriptions.get(selected_ticker, "No description available."))
 
 elif page == "📊 Portfolio Combined":
     st.subheader("📊 Portfolio Combined View")

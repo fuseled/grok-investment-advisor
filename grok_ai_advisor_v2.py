@@ -6,23 +6,47 @@ from datetime import datetime
 
 st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", page_icon="📈", initial_sidebar_state="expanded")
 
-# Professional styling
+# Tight professional styling
 st.markdown("""
 <style>
-    .stApp { background-color: #0e1117; color: #fafafa; padding-top: 0rem !important; margin-top: 0 !important; }
+    .stApp { 
+        background-color: #0e1117; 
+        color: #fafafa; 
+        padding-top: 0rem !important;
+        margin-top: 0 !important;
+    }
+    .block-container {
+        padding-top: 0rem !important;
+        margin-top: 0 !important;
+    }
     .stMetric { background-color: #1a1f2e; border-radius: 12px; padding: 18px; border: 1px solid #2d3748; }
     .stButton>button { background-color: #1f6feb; color: white; border-radius: 8px; font-weight: 600; padding: 14px 28px; }
-    h1, h2, h3 { color: #ffffff; margin-top: 0 !important; padding-top: 0 !important; }
+    h1, h2, h3 { 
+        color: #ffffff; 
+        margin-top: 0 !important; 
+        padding-top: 0 !important; 
+    }
     .stSidebar { background-color: #161b28; }
-    .stSidebar .stRadio label { font-size: 1.35rem !important; font-weight: 700 !important; padding: 14px 0 !important; }
+    .stSidebar .stRadio label {
+        font-size: 1.35rem !important;
+        font-weight: 700 !important;
+        padding: 14px 0 !important;
+        line-height: 1.4;
+    }
 </style>
 """, unsafe_allow_html=True)
 
+# ==================== SIDEBAR NAVIGATION ====================
 st.sidebar.title("CASH AdvIsor")
 page = st.sidebar.radio(
     "Navigate",
-    ["Portfolio Overview", "Income Projections", "Future Portfolio", "Holding Details", 
-     "Portfolio Combined", "Reinvestment Strategy", "Guardrails & Alerts"]
+    ["Portfolio Overview",
+     "Income Projections",
+     "Future Portfolio",
+     "Holding Details",
+     "Portfolio Combined",
+     "Reinvestment Strategy",
+     "Guardrails & Alerts"]
 )
 
 st.title("Grok AI Investment Advisor v2")
@@ -49,20 +73,21 @@ category_map = {
     "SCHD": "Quality Dividend Growth", "VIG": "Quality Dividend Growth",
     "SGOV": "Cash Buffer",
     "NVDY": "Aggressive High-Yield", "ULTY": "Aggressive High-Yield",
-    "CHPY": "Aggressive High-Yield", "MRNY": "Aggressive High-Yield", "YMAX": "Aggressive High-Yield",
+    "CHPY": "Aggressive High-Yield", "MRNY": "Aggressive High-Yield",
+    "YMAX": "Aggressive High-Yield",
 }
 
 payout_data = {
-    "JEPI": {"freq": "Monthly", "yield": 8.4, "taxable_pct": 0.85},
-    "JEPQ": {"freq": "Monthly", "yield": 10.3, "taxable_pct": 0.85},
-    "SCHD": {"freq": "Quarterly", "yield": 3.3, "taxable_pct": 0.70},
-    "VIG": {"freq": "Quarterly", "yield": 1.6, "taxable_pct": 0.70},
-    "SGOV": {"freq": "Monthly", "yield": 4.5, "taxable_pct": 1.0},
-    "NVDY": {"freq": "Weekly", "yield": 60.0, "taxable_pct": 0.50},
-    "ULTY": {"freq": "Weekly", "yield": 65.0, "taxable_pct": 0.50},
-    "CHPY": {"freq": "Weekly", "yield": 46.0, "taxable_pct": 0.50},
-    "MRNY": {"freq": "Weekly", "yield": 71.0, "taxable_pct": 0.50},
-    "YMAX": {"freq": "Weekly", "yield": 57.0, "taxable_pct": 0.50},
+    "JEPI": {"freq": "Monthly", "yield": 8.4},
+    "JEPQ": {"freq": "Monthly", "yield": 10.3},
+    "SCHD": {"freq": "Quarterly", "yield": 3.3},
+    "VIG": {"freq": "Quarterly", "yield": 1.6},
+    "SGOV": {"freq": "Monthly", "yield": 4.5},
+    "NVDY": {"freq": "Weekly", "yield": 60.0},
+    "ULTY": {"freq": "Weekly", "yield": 65.0},
+    "CHPY": {"freq": "Weekly", "yield": 46.0},
+    "MRNY": {"freq": "Weekly", "yield": 71.0},
+    "YMAX": {"freq": "Weekly", "yield": 57.0},
 }
 
 tickers = list(targets.keys())
@@ -89,7 +114,7 @@ def get_vix():
 prices = get_live_prices(tickers)
 current_vix = get_vix()
 
-# Build dataframe
+# Build main dataframe
 data = []
 for t in tickers:
     target_amount = targets[t]["amount"]
@@ -100,11 +125,15 @@ for t in tickers:
     target_pct = targets[t]["target_pct"]
     drift = round(current_pct - target_pct, 2)
     annual = round(target_amount * payout_data[t]["yield"] / 100, 0)
+    monthly = round(annual / 12, 0) if payout_data[t]["freq"] in ["Monthly", "Weekly"] else round(annual / 4, 0)
     data.append({
-        "Ticker": t, "Category": category_map[t],
-        "Target %": target_pct, "Current %": current_pct, "Drift": drift,
-        "Current Value": current_value, "Est. Annual Payout": annual,
-        "Taxable %": payout_data[t]["taxable_pct"]
+        "Ticker": t,
+        "Category": category_map[t],
+        "Target %": target_pct,
+        "Current %": current_pct,
+        "Drift": drift,
+        "Current Value": current_value,
+        "Est. Annual Payout": annual,
     })
 
 df = pd.DataFrame(data)
@@ -134,7 +163,7 @@ if 'quality_growth_tracker' not in st.session_state:
         {"Asset": "VIG", "Position": 1000, "Payments_Made": 0}
     ])
 
-# ==================== PAGES ====================
+# ==================== PAGE SELECTION ====================
 if page == "Portfolio Overview":
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
@@ -167,81 +196,83 @@ elif page == "Income Projections":
 
 elif page == "Future Portfolio":
     st.subheader("Future Portfolio Outlook")
+    st.caption("Long-term growth and income projections")
+
     current_value = current_portfolio_value
+    current_income = total_annual
+
     for label, years in {"1 Year": 1, "5 Years": 5, "10 Years": 10}.items():
         st.markdown(f"### {label} Outlook")
         col1, col2, col3 = st.columns(3)
-        with col1: st.metric(f"**Conservative** (6%)", f"${round(current_value * (1.06 ** years)):,}")
-        with col2: st.metric(f"**Base Case** (9%)", f"${round(current_value * (1.09 ** years)):,}")
-        with col3: st.metric(f"**Optimistic** (12%)", f"${round(current_value * (1.12 ** years)):,}")
+        with col1:
+            cons_value = round(current_value * (1.06 ** years), 0)
+            st.metric(f"**Conservative** (6%)", f"${cons_value:,.0f}")
+        with col2:
+            base_value = round(current_value * (1.09 ** years), 0)
+            st.metric(f"**Base Case** (9%)", f"${base_value:,.0f}")
+        with col3:
+            opt_value = round(current_value * (1.12 ** years), 0)
+            st.metric(f"**Optimistic** (12%)", f"${opt_value:,.0f}")
         st.divider()
 
 elif page == "Guardrails & Alerts":
     st.subheader("Proactive Guardrails & Risk Controls")
-    st.caption("These rules protect capital and maintain sustainable income.")
+    st.caption("These rules are designed to protect capital and maintain income sustainability.")
 
-    # 1. VIX
+    # VIX Guardrail
     if current_vix > 30:
-        vix_status, vix_action = "🔴 HIGH", "Consider increasing high-yield exposure"
+        vix_status = "🔴 HIGH"
+        vix_action = "Consider increasing high-yield exposure (premiums are rich)"
     elif current_vix < 15:
-        vix_status, vix_action = "🟡 LOW", "Premiums are lower — be selective"
+        vix_status = "🟡 LOW"
+        vix_action = "Premiums are lower — be selective with new high-yield adds"
     else:
-        vix_status, vix_action = "🟢 NORMAL", "Good environment for current allocation"
-    st.markdown(f"**1. VIX Level** — Current: **{current_vix}** → {vix_status}")
+        vix_status = "🟢 NORMAL"
+        vix_action = "Good environment for current high-yield allocation"
+
+    st.markdown(f"**1. VIX Level Guardrail** — Current: **{current_vix}** → {vix_status}")
     st.caption(vix_action)
 
-    # 2. Aggressive Slice
+    # Aggressive Slice Guardrail
     if 4.0 <= aggressive_current <= 7.0:
         slice_status = "🟢 HEALTHY"
     elif aggressive_current > 8.0:
         slice_status = "🔴 OVERWEIGHT"
     else:
         slice_status = "🟡 UNDERWEIGHT"
+    
     st.markdown(f"**2. Aggressive High-Yield Slice** — Current: **{aggressive_current:.1f}%** → {slice_status}")
+    st.caption("Target Range: 4.0% – 7.0%. This slice should remain tactical and actively managed.")
 
-    # 3. Drift
+    # Drift Guardrail
     big_drifts = df[abs(df["Drift"]) > 2.0]
-    drift_status = "🟢 OK" if big_drifts.empty else "🟡 MONITOR"
-    st.markdown(f"**3. Portfolio Drift** → {drift_status}")
-
-    # 4. Liquidity
-    sgov_pct = df[df["Ticker"] == "SGOV"]["Current %"].values[0]
-    liq_status = "🟢 HEALTHY" if sgov_pct >= 2.5 else "🟡 LOW"
-    st.markdown(f"**4. Liquidity Buffer (SGOV)** — Current: **{sgov_pct:.1f}%** → {liq_status}")
-
-    # 5. NEW: Tax Drag Monitoring
-    st.divider()
-    st.markdown("**5. Tax Drag & Return of Capital (ROC) Monitoring**")
-
-    tax_rate = 35.0  # Using default rate
-    df["Taxable_Income"] = df["Est. Annual Payout"] * df["Taxable %"]
-    total_taxable = df["Taxable_Income"].sum()
-    estimated_tax_drag = round(total_taxable * (tax_rate / 100), 0)
-    effective_yield = round((total_annual - estimated_tax_drag) / current_portfolio_value * 100, 2)
-
-    col1, col2, col3 = st.columns(3)
-    with col1: st.metric("Total Annual Distributions", f"${total_annual:,.0f}")
-    with col2: st.metric("Estimated Taxable Portion", f"${total_taxable:,.0f}")
-    with col3: st.metric("Estimated Tax Drag (35%)", f"${estimated_tax_drag:,.0f}")
-
-    st.metric("Effective After-Tax Portfolio Yield", f"{effective_yield}%")
-
-    if estimated_tax_drag > total_annual * 0.25:
-        tax_status = "🟡 MODERATE"
-        tax_note = "A meaningful portion of distributions is taxable. Consider ROC impact on cost basis."
+    if big_drifts.empty:
+        drift_status = "🟢 OK"
+        drift_msg = "No significant drift detected."
     else:
-        tax_status = "🟢 MANAGEABLE"
-        tax_note = "Tax drag is within reasonable range thanks to ROC in high-yield holdings."
+        drift_status = "🟡 MONITOR"
+        drift_msg = f"{len(big_drifts)} holding(s) drifting more than ±2% from target."
+    
+    st.markdown(f"**3. Portfolio Drift Guardrail** → {drift_status}")
+    st.caption(drift_msg)
 
-    st.markdown(f"**Status:** {tax_status}")
-    st.caption(tax_note)
+    # Liquidity Guardrail
+    sgov_pct = df[df["Ticker"] == "SGOV"]["Current %"].values[0]
+    if sgov_pct >= 2.5:
+        liq_status = "🟢 HEALTHY"
+    else:
+        liq_status = "🟡 LOW"
+    
+    st.markdown(f"**4. Liquidity / Cash Buffer (SGOV)** — Current: **{sgov_pct:.1f}%** → {liq_status}")
+    st.caption("Recommended minimum: \~2.5–3% for flexibility and safety.")
 
-    # Overall Status
+    # Overall Health
     st.divider()
     if current_vix < 30 and 4.0 <= aggressive_current <= 7.0 and sgov_pct >= 2.5:
         overall = "🟢 GREEN — Portfolio is operating within defined guardrails."
     else:
         overall = "🟡 YELLOW — One or more guardrails need attention."
+    
     st.success(overall)
 
 elif page == "Holding Details":
@@ -250,7 +281,15 @@ elif page == "Holding Details":
     if selected_ticker:
         row = df[df["Ticker"] == selected_ticker].iloc[0]
         st.subheader(f"{selected_ticker} Details")
-        st.dataframe(pd.DataFrame([row]), use_container_width=True, hide_index=True)
+        detail_df = pd.DataFrame([{
+            "Ticker": row["Ticker"],
+            "Category": row["Category"],
+            "Current Value": f"${row['Current Value']:,.0f}",
+            "Current %": f"{row['Current %']:.1f}%",
+            "Target %": f"{row['Target %']:.1f}%",
+            "Drift": f"{row['Drift']:+.1f}%",
+        }])
+        st.dataframe(detail_df, use_container_width=True, hide_index=True)
 
 elif page == "Portfolio Combined":
     st.subheader("Portfolio Combined View")

@@ -4,9 +4,9 @@ import pandas as pd
 import plotly.express as px
 from datetime import datetime
 
-st.set_page_config(page_title="CASH AdvIsor", layout="wide", page_icon="📈", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Grok AI Investment Advisor v2", layout="wide", page_icon="📈", initial_sidebar_state="expanded")
 
-# Professional styling
+# Tight professional styling
 st.markdown("""
 <style>
     .stApp { background-color: #0e1117; color: #fafafa; padding-top: 0rem !important; margin-top: 0 !important; }
@@ -15,15 +15,21 @@ st.markdown("""
     h1, h2, h3 { color: #ffffff; margin-top: 0 !important; padding-top: 0 !important; }
     .stSidebar { background-color: #161b28; }
     .stSidebar .stRadio label { font-size: 1.35rem !important; font-weight: 700 !important; padding: 14px 0 !important; }
-    .guardrail-card { background-color: #1a1f2e; padding: 20px; border-radius: 12px; border: 1px solid #2d3748; margin-bottom: 12px; }
 </style>
 """, unsafe_allow_html=True)
 
+# ==================== SIDEBAR NAVIGATION ====================
 st.sidebar.title("CASH AdvIsor")
 page = st.sidebar.radio(
     "Navigate",
-    ["Portfolio Overview", "Income Projections", "Future Portfolio", "Tax Prep", 
-     "Holding Details", "Portfolio Combined", "Reinvestment Strategy", "Guardrails & Alerts"]
+    ["Portfolio Overview",
+     "Income Projections",
+     "Future Portfolio",
+     "Tax Prep",
+     "Holding Details",
+     "Portfolio Combined",
+     "Reinvestment Strategy",
+     "Guardrails & Alerts"]
 )
 
 st.title("Grok AI Investment Advisor v2")
@@ -50,7 +56,8 @@ category_map = {
     "SCHD": "Quality Dividend Growth", "VIG": "Quality Dividend Growth",
     "SGOV": "Cash Buffer",
     "NVDY": "Aggressive High-Yield", "ULTY": "Aggressive High-Yield",
-    "CHPY": "Aggressive High-Yield", "MRNY": "Aggressive High-Yield", "YMAX": "Aggressive High-Yield",
+    "CHPY": "Aggressive High-Yield", "MRNY": "Aggressive High-Yield",
+    "YMAX": "Aggressive High-Yield",
 }
 
 payout_data = {
@@ -90,7 +97,7 @@ def get_vix():
 prices = get_live_prices(tickers)
 current_vix = get_vix()
 
-# Build dataframe
+# Build main dataframe
 data = []
 for t in tickers:
     target_amount = targets[t]["amount"]
@@ -102,9 +109,13 @@ for t in tickers:
     drift = round(current_pct - target_pct, 2)
     annual = round(target_amount * payout_data[t]["yield"] / 100, 0)
     data.append({
-        "Ticker": t, "Category": category_map[t],
-        "Target %": target_pct, "Current %": current_pct, "Drift": drift,
-        "Current Value": current_value, "Est. Annual Payout": annual,
+        "Ticker": t,
+        "Category": category_map[t],
+        "Target %": target_pct,
+        "Current %": current_pct,
+        "Drift": drift,
+        "Current Value": current_value,
+        "Est. Annual Payout": annual,
         "Taxable %": payout_data[t]["taxable_pct"]
     })
 
@@ -113,7 +124,7 @@ aggressive_current = df[df["Ticker"].isin(["NVDY","ULTY","CHPY","MRNY","YMAX"])]
 total_annual = df["Est. Annual Payout"].sum()
 current_portfolio_value = df['Current Value'].sum()
 
-# Trackers
+# ==================== TRACKERS ====================
 if 'high_yield_tracker' not in st.session_state:
     st.session_state.high_yield_tracker = pd.DataFrame([
         {"Asset": "NVDY", "Position": 1000, "Payments_Made": 0},
@@ -135,7 +146,7 @@ if 'quality_growth_tracker' not in st.session_state:
         {"Asset": "VIG", "Position": 1000, "Payments_Made": 0}
     ])
 
-# ==================== PAGES ====================
+# ==================== PAGE SELECTION ====================
 if page == "Portfolio Overview":
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
@@ -179,14 +190,18 @@ elif page == "Future Portfolio":
 
 elif page == "Tax Prep":
     st.subheader("Tax Prep & Quarterly Planning")
-    st.caption("Strategy to minimize idle cash while staying compliant.")
+    st.caption("Strategy to minimize idle cash while staying compliant and protected from penalties.")
 
+    # Section 1: Current Estimate
     st.markdown("### 1. Current Year Tax Estimate")
     col1, col2, col3 = st.columns(3)
     with col1: st.metric("Gross Annual Distributions", f"${total_annual:,.0f}")
     with col2: st.metric("Est. Taxable Portion (after ROC)", f"${round(total_annual * 0.65):,.0f}")
     with col3: st.metric("Est. Tax Owed @ 35%", f"${round(total_annual * 0.65 * 0.35):,.0f}")
 
+    st.info("**Note:** YieldMax ETFs return a large portion as Return of Capital (ROC). This reduces your current taxable income but lowers your cost basis for future capital gains.")
+
+    # Section 2: 110% Safe Harbor Calculator
     st.markdown("### 2. 110% Safe Harbor Quarterly Payments")
     last_year_tax = st.number_input("What was your total tax bill last year?", value=42000, step=1000)
     safe_harbor_annual = round(last_year_tax * 1.10, 0)
@@ -197,129 +212,34 @@ elif page == "Tax Prep":
     with col2: st.metric("Quarterly Payment", f"${quarterly_payment:,.0f}")
     with col3: st.metric("Next Due Date", "Jan 15, 2027")
 
-    st.markdown("### 3. Recommended Tax Reserve")
+    st.caption("Paying 110% of last year’s tax protects you from underpayment penalties even if your income is higher this year.")
+
+    # Section 3: Tax Reserve Recommendation
+    st.markdown("### 3. Recommended Tax Reserve (Keep It Working)")
     recommended_reserve = max(50000, round(quarterly_payment * 4 * 1.1))
     sgov_current = df[df["Ticker"] == "SGOV"]["Current Value"].sum()
+
     col1, col2 = st.columns(2)
     with col1: st.metric("Recommended Tax Reserve", f"${recommended_reserve:,.0f}")
     with col2: st.metric("Currently in SGOV", f"${sgov_current:,.0f}")
 
-elif page == "Guardrails & Alerts":
-    st.subheader("🛡️ Guardrails & Risk Controls")
-    st.caption("Real-time monitoring of your $2.1M CASH AdvIsor strategy")
-
-    # Overall Health Banner
-    if current_vix < 30 and 4.0 <= aggressive_current <= 7.0:
-        health_status = "🟢 GREEN — Strategy operating within all guardrails"
-        health_summary = "Your portfolio is generating strong income with controlled risk. The aggressive slice is well balanced."
+    if sgov_current < recommended_reserve:
+        st.warning(f"Consider moving an additional **${recommended_reserve - sgov_current:,.0f}** into SGOV as your dedicated Tax Reserve.")
     else:
-        health_status = "🟡 YELLOW — One or more guardrails need attention"
-        health_summary = "Review the sections below for specific items requiring monitoring."
+        st.success("Your SGOV buffer is sufficient for tax reserves.")
 
-    st.success(health_status)
-    st.write(health_summary)
+    # Section 4: Action Plan
+    st.markdown("### 4. Recommended Action Plan")
+    st.write("""
+    **Best Practice for Your Portfolio:**
+    1. Calculate 110% of last year’s tax → divide by 4 = your quarterly payment.
+    2. Keep **one year of estimated taxes** parked in **SGOV** (already in your portfolio).
+    3. Every quarter, move the required amount from your main distributions into the SGOV Tax Reserve.
+    4. Pay your quarterly estimated taxes on time (Apr 15, Jun 15, Sep 15, Jan 15).
+    5. At year-end, your CPA will reconcile actual ROC numbers and adjust.
 
-    # Strategy Overview
-    with st.expander("📘 How This Strategy Works"):
-        st.write("""
-        **Core Philosophy**: Generate high sustainable income (\~$190k/year) while keeping most capital working and protected.
-
-        **4-Pillar Structure**:
-        - **Core Stable Income (57%)**: JEPI + JEPQ — reliable monthly covered-call income
-        - **Quality Dividend Growth (30%)**: SCHD + VIG — growing dividends + inflation protection
-        - **Cash Buffer (3%)**: SGOV — liquidity + tax reserve
-        - **Aggressive High-Yield (6%)**: NVDY, ULTY, CHPY, MRNY, YMAX — tactical income boosts
-
-        **Reinvestment Rule**: 60% High-Yield | 30% Core Stable | 10% Quality Growth on surplus
-        **Tax Strategy**: Use 110% Safe Harbor + keep \~1 year of taxes in SGOV
-        """)
-
-    # Live Guardrails Dashboard
-    st.markdown("### Live Guardrails Dashboard")
-
-    # VIX
-    if current_vix > 30:
-        vix_status, vix_action = "🔴 HIGH", "Premiums are very rich — good time to add selectively"
-    elif current_vix < 15:
-        vix_status, vix_action = "🟡 LOW", "Premiums compressed — be more selective with new adds"
-    else:
-        vix_status, vix_action = "🟢 NORMAL", "Healthy environment for current allocation"
-    st.markdown(f"**VIX Level** — Current: **{current_vix}** → {vix_status}")
-    st.caption(vix_action)
-
-    # Aggressive Slice
-    if 4.0 <= aggressive_current <= 7.0:
-        slice_status = "🟢 HEALTHY"
-    elif aggressive_current > 8.0:
-        slice_status = "🔴 OVERWEIGHT"
-    else:
-        slice_status = "🟡 UNDERWEIGHT"
-    st.markdown(f"**Aggressive High-Yield Slice** — Current: **{aggressive_current:.1f}%** → {slice_status}")
-    st.caption("Target: 4.0% – 7.0%. This is your tactical income booster.")
-
-    # Drift
-    big_drifts = df[abs(df["Drift"]) > 2.0]
-    drift_status = "🟢 OK" if big_drifts.empty else "🟡 MONITOR"
-    st.markdown(f"**Portfolio Drift** → {drift_status}")
-    if not big_drifts.empty:
-        st.caption(f"{len(big_drifts)} holding(s) drifting more than ±2% from target.")
-
-    # Liquidity
-    sgov_pct = df[df["Ticker"] == "SGOV"]["Current %"].values[0]
-    liq_status = "🟢 HEALTHY" if sgov_pct >= 2.5 else "🟡 LOW"
-    st.markdown(f"**Liquidity Buffer (SGOV)** — Current: **{sgov_pct:.1f}%** → {liq_status}")
-
-    # Tax Drag
-    df["Taxable_Income"] = df["Est. Annual Payout"] * df["Taxable %"]
-    total_taxable = df["Taxable_Income"].sum()
-    estimated_tax_drag = round(total_taxable * 0.35, 0)
-    tax_status = "🟢 MANAGEABLE" if estimated_tax_drag < total_annual * 0.30 else "🟡 ELEVATED"
-    st.markdown(f"**Tax Drag & ROC** → {tax_status}")
-    st.caption(f"Est. taxable portion: ${total_taxable:,.0f} | Est. tax drag @ 35%: ${estimated_tax_drag:,.0f}")
-
-    # Income Sustainability
-    st.markdown("**Income Sustainability** → 🟢 ON TRACK")
-    st.caption("Projected income is being generated as expected from the current allocation.")
-
-    # Overall
-    st.divider()
-    if current_vix < 30 and 4.0 <= aggressive_current <= 7.0 and sgov_pct >= 2.5:
-        overall = "🟢 GREEN — All major guardrails are healthy."
-    else:
-        overall = "🟡 YELLOW — Monitor the items flagged above."
-    st.success(overall)
-
-    # Performance Insights
-    st.markdown("### How the Strategy Is Performing Right Now")
-    st.write(f"""
-    - Your aggressive high-yield slice is contributing meaningful income while staying within the 4–7% target range.
-    - The Core Stable Income bucket (JEPI + JEPQ) continues to provide the majority of reliable monthly cash flow.
-    - SGOV is serving dual purpose as both liquidity buffer and tax reserve.
-    - Return of Capital in the YieldMax holdings is helping reduce current-year taxable income.
+    This keeps the maximum amount of money working for you while protecting you from penalties.
     """)
-
-    # Recommendations
-    st.markdown("### Proactive Recommendations")
-    if current_vix > 28:
-        st.write("• VIX is elevated — good environment to maintain or slightly increase high-yield exposure if desired.")
-    if aggressive_current < 4.0:
-        st.write("• Aggressive slice is underweight — consider adding to NVDY or CHPY on dips.")
-    if sgov_pct < 2.5:
-        st.write("• Consider topping up SGOV to maintain healthy liquidity/tax reserve.")
-    st.write("• Continue following the 60/30/10 reinvestment rule on surplus.")
-    st.write("• Track ROC on your 1099-DIV at year-end for accurate tax filing.")
-
-    # Key Concepts
-    with st.expander("📚 Key Concepts"):
-        st.write("""
-        **Return of Capital (ROC)**: Many YieldMax distributions are not fully taxable immediately. They reduce your cost basis instead.
-        
-        **110% Safe Harbor**: Paying 110% of last year’s tax in quarterly installments protects you from underpayment penalties.
-        
-        **Why SGOV for Tax Reserve**: Earns yield, is extremely safe, and is state-tax exempt in California.
-        
-        **Core vs Aggressive**: Core Stable provides reliability. Aggressive High-Yield provides upside income when volatility is present.
-        """)
 
 elif page == "Holding Details":
     st.subheader("Detailed Holding Information")
@@ -341,5 +261,40 @@ elif page == "Reinvestment Strategy":
     with col1: st.metric("High-Yield (60%)", f"${round(monthly_surplus * 0.60):,.0f}")
     with col2: st.metric("Core Stable (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
     with col3: st.metric("Quality Growth (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
+
+elif page == "Guardrails & Alerts":
+    st.subheader("Proactive Guardrails & Risk Controls")
+    st.caption("These rules protect capital and maintain sustainable income.")
+
+    if current_vix > 30:
+        vix_status = "🔴 HIGH"
+    elif current_vix < 15:
+        vix_status = "🟡 LOW"
+    else:
+        vix_status = "🟢 NORMAL"
+    st.markdown(f"**1. VIX Level** — Current: **{current_vix}** → {vix_status}")
+
+    if 4.0 <= aggressive_current <= 7.0:
+        slice_status = "🟢 HEALTHY"
+    elif aggressive_current > 8.0:
+        slice_status = "🔴 OVERWEIGHT"
+    else:
+        slice_status = "🟡 UNDERWEIGHT"
+    st.markdown(f"**2. Aggressive High-Yield Slice** — Current: **{aggressive_current:.1f}%** → {slice_status}")
+
+    big_drifts = df[abs(df["Drift"]) > 2.0]
+    drift_status = "🟢 OK" if big_drifts.empty else "🟡 MONITOR"
+    st.markdown(f"**3. Portfolio Drift** → {drift_status}")
+
+    sgov_pct = df[df["Ticker"] == "SGOV"]["Current %"].values[0]
+    liq_status = "🟢 HEALTHY" if sgov_pct >= 2.5 else "🟡 LOW"
+    st.markdown(f"**4. Liquidity Buffer (SGOV)** — Current: **{sgov_pct:.1f}%** → {liq_status}")
+
+    st.divider()
+    if current_vix < 30 and 4.0 <= aggressive_current <= 7.0 and sgov_pct >= 2.5:
+        overall = "🟢 GREEN — Portfolio is operating within defined guardrails."
+    else:
+        overall = "🟡 YELLOW — One or more guardrails need attention."
+    st.success(overall)
 
 st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")

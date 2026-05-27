@@ -55,7 +55,7 @@ page = st.sidebar.radio(
 )
 
 st.title("Grok AI Investment Advisor v2")
-st.markdown("**$2.1M Portfolio → \~$190k/year** | Built for Jay")
+st.markdown("**$2.1M Portfolio → \\~$190k/year** | Built for Jay")
 
 # ==================== PORTFOLIO DATA ====================
 TOTAL_CAPITAL = 2_100_000
@@ -285,11 +285,17 @@ elif page == "Future Portfolio":
     st.write("**Projected Portfolio Value at End of 2027**")
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("**Conservative** (6% total return)", f"\( {round(current_portfolio_value * 1.06):,.0f}", f"+ \){round(current_portfolio_value * 0.06):,.0f}")
+        st.metric("**Conservative** (6% total return)", 
+                  f"${round(current_portfolio_value * 1.06):,.0f}", 
+                  f"+${round(current_portfolio_value * 0.06):,.0f}")
     with col2:
-        st.metric("**Base Case** (9% total return)", f"\( {round(current_portfolio_value * 1.09):,.0f}", f"+ \){round(current_portfolio_value * 0.09):,.0f}")
+        st.metric("**Base Case** (9% total return)", 
+                  f"${round(current_portfolio_value * 1.09):,.0f}", 
+                  f"+${round(current_portfolio_value * 0.09):,.0f}")
     with col3:
-        st.metric("**Optimistic** (12% total return)", f"\( {round(current_portfolio_value * 1.12):,.0f}", f"+ \){round(current_portfolio_value * 0.12):,.0f}")
+        st.metric("**Optimistic** (12% total return)", 
+                  f"${round(current_portfolio_value * 1.12):,.0f}", 
+                  f"+${round(current_portfolio_value * 0.12):,.0f}")
 
     st.subheader("Base Case Breakdown (9% Total Return)")
     projected_income_2027 = round(total_annual * 1.03, 0)

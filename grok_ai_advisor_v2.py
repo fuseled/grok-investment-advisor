@@ -250,9 +250,9 @@ if page == "Portfolio Overview":
         col1, col2, col3, col4, col5 = st.columns(5)
         with col1: st.metric("Total Value", f"${total_value:,.0f}")
         with col2: st.metric("Portfolio %", f"{total_pct:.1f}%")
-        with col3: st.metric("Expected Yearly $, f"{yearly_expected:,.0f}")
-        with col4: st.metric("Expected Quarterly $, f" \){quarterly_expected:,.0f}")
-        with col5: st.metric("Expected Monthly $, f" \){monthly_expected:,.0f}")
+        with col3: st.metric("Expected Yearly \( ", f" \){yearly_expected:,.0f}")
+        with col4: st.metric("Expected Quarterly \( ", f" \){quarterly_expected:,.0f}")
+        with col5: st.metric("Expected Monthly \( ", f" \){monthly_expected:,.0f}")
 
         st.dataframe(cat_df[["Ticker", "Target %", "Current %", "Est. Annual Yield", "Est. Annual Payout", "Est. Monthly Payout", "Frequency"]], use_container_width=True, hide_index=True)
         st.markdown("---")

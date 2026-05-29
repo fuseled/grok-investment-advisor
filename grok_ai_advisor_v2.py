@@ -1,27 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Updated Streamlit App - All Shares Rounded to Nearest Whole Number</title>
-    <style>
-        body { font-family: monospace; background: #0e1117; color: #fafafa; padding: 20px; }
-        pre { background: #161b28; padding: 20px; border-radius: 12px; overflow: auto; }
-        h1 { color: #1f6feb; }
-        .highlight { background: #1f6feb; color: white; padding: 2px 6px; border-radius: 4px; }
-    </style>
-</head>
-<body>
-    <h1>✅ Your App Has Been Updated!</h1>
-    <p><strong>All shares are now rounded to the nearest whole number</strong> everywhere in the app:</p>
-    <ul>
-        <li>Main portfolio overview &amp; calculations (target amounts → whole shares)</li>
-        <li>Portfolio Combined view</li>
-        <li>Holding Details</li>
-        <li>All three trackers in <strong>Reinvestment Strategy</strong> (High-Yield, Core Stable, Quality Growth)</li>
-    </ul>
-    <p>Current Value and percentages now reflect realistic whole-share holdings (tiny drift from exact target is normal and expected).</p>
-
-    <h2>Full Updated Code (copy-paste ready)</h2>
-    <pre><code>import streamlit as st
+import streamlit as st
 import yfinance as yf
 import pandas as pd
 import plotly.express as px
@@ -167,8 +144,7 @@ data = []
 for t in tickers:
     target_amount = targets[t]["amount"]
     price = prices[t]
-    # CHANGED: Shares now rounded to nearest WHOLE number (was 2 decimals)
-    shares = int(round(target_amount / price)) if price > 0 else 0
+    shares = round(target_amount / price, 2) if price > 0 else 0
     current_value = round(shares * price, 2)
     current_pct = round((current_value / TOTAL_CAPITAL) * 100, 2)
     target_pct = targets[t]["target_pct"]
@@ -391,8 +367,7 @@ elif page == "Reinvestment Strategy":
 
     st.subheader("High-Yield Holdings Tracker")
     hy_df = st.session_state.high_yield_tracker.copy()
-    # CHANGED: Shares now rounded to nearest WHOLE number
-    hy_df["Shares"] = (hy_df["Position"] / hy_df["Asset"].map(lambda a: prices.get(a, 1))).round(0).astype(int)
+    hy_df["Shares"] = hy_df["Position"] / hy_df["Asset"].map(lambda a: prices.get(a, 1))
     hy_df["Est Monthly Payout"] = hy_df["Position"] * hy_df["Asset"].map(lambda a: payout_data.get(a, {"yield": 0})["yield"] / 100 / 12)
     hy_df = hy_df[["Asset", "Position", "Shares", "Est Monthly Payout", "Payments_Made"]]
     edited_hy = st.data_editor(hy_df, use_container_width=True, hide_index=True, num_rows="fixed")
@@ -416,8 +391,7 @@ elif page == "Reinvestment Strategy":
 
     st.subheader("Core Stable Holdings Tracker")
     cs_df = st.session_state.core_stable_tracker.copy()
-    # CHANGED: Shares now rounded to nearest WHOLE number
-    cs_df["Shares"] = (cs_df["Position"] / cs_df["Asset"].map(lambda a: prices.get(a, 1))).round(0).astype(int)
+    cs_df["Shares"] = cs_df["Position"] / cs_df["Asset"].map(lambda a: prices.get(a, 1))
     cs_df["Est Monthly Payout"] = cs_df["Position"] * cs_df["Asset"].map(lambda a: payout_data.get(a, {"yield": 0})["yield"] / 100 / 12)
     cs_df = cs_df[["Asset", "Position", "Shares", "Est Monthly Payout", "Payments_Made"]]
     edited_cs = st.data_editor(cs_df, use_container_width=True, hide_index=True, num_rows="fixed")
@@ -441,8 +415,7 @@ elif page == "Reinvestment Strategy":
 
     st.subheader("Quality Dividend Growth Holdings Tracker")
     qg_df = st.session_state.quality_growth_tracker.copy()
-    # CHANGED: Shares now rounded to nearest WHOLE number
-    qg_df["Shares"] = (qg_df["Position"] / qg_df["Asset"].map(lambda a: prices.get(a, 1))).round(0).astype(int)
+    qg_df["Shares"] = qg_df["Position"] / qg_df["Asset"].map(lambda a: prices.get(a, 1))
     qg_df["Est Monthly Payout"] = qg_df["Position"] * qg_df["Asset"].map(lambda a: payout_data.get(a, {"yield": 0})["yield"] / 100 / 12)
     qg_df = qg_df[["Asset", "Position", "Shares", "Est Monthly Payout", "Payments_Made"]]
     edited_qg = st.data_editor(qg_df, use_container_width=True, hide_index=True, num_rows="fixed")
@@ -457,9 +430,3 @@ elif page == "Guardrails & Alerts":
     st.info("All guardrails are currently GREEN. No immediate action required.")
 
 st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
-</code></pre>
-
-    <p><strong>How to use:</strong> Just replace your entire app code with the version above and rerun. No other changes needed.</p>
-    <p>Shares now appear as clean whole numbers (e.g. 12,345 instead of 12,345.67) everywhere. Let me know if you want any tweaks (e.g. rounding logic, display formatting, etc.)!</p>
-</body>
-</html>

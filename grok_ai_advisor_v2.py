@@ -18,7 +18,7 @@ portfolio_data = {
 }
 
 df_base = pd.DataFrame(portfolio_data)
-total_portfolio_value = 1_250_000  # ← CHANGE TO YOUR ACTUAL VALUE
+total_portfolio_value = 1_250_000  # ← CHANGE TO YOUR ACTUAL PORTFOLIO VALUE
 
 # ========================
 # SIDEBAR NAVIGATION
@@ -103,21 +103,48 @@ elif page == "Holdings Breakdown":
 # ========================
 elif page == "ETF Decision Engine":
     st.title("🤖 ETF Decision Engine - Hold / Buy / Dump")
+    
+    st.markdown("""
+    ### How the Decision Engine Works
+    Scores each holding **0–100** based on your Aggressive but Safe goals:
+    - High Monthly Yield (25%)
+    - NAV / Capital Preservation (25%)
+    - Volatility & Risk (15%)
+    - Other factors (35%)
+    
+    **Scoring Rules**: ≥78 = Strong Buy | 65–77 = Hold | <65 = Reduce/Dump
+    """)
 
     df = df_base.copy()
 
-    def calculate_score(row):
+    def calculate_score_and_reason(row):
         yield_score = 10 if row["Est. Annual Yield %"] > 9 else 8 if row["Est. Annual Yield %"] > 7 else 5
         nav_score = 9 if row["Unrealized P/L %"] > 0 else 6
         vol_score = 9 if row["Ticker"] in ["JEPI", "IBHJ"] else 7
-        return round(yield_score*0.25 + nav_score*0.25 + vol_score*0.15 + 8*0.10 + 8*0.10 + 8*0.10 + 7*0.05, 1)
+        
+        total_score = round(yield_score*0.25 + nav_score*0.25 + vol_score*0.15 + 8*0.10 + 8*0.10 + 8*0.10 + 7*0.05, 1)
+        
+        reasons = []
+        if yield_score >= 8:
+            reasons.append("Strong yield")
+        if nav_score == 9:
+            reasons.append("Positive P/L")
+        else:
+            reasons.append("NAV monitoring needed")
+        if vol_score == 9:
+            reasons.append("Lower volatility")
+        if row["Ticker"] in ["IBHJ", "EVHY"]:
+            reasons.append("Bond buffer stability")
+        
+        reason_text = ", ".join(reasons)
+        return total_score, reason_text
 
-    df["Calculated Score"] = df.apply(calculate_score, axis=1)
+    df["Calculated Score"], df["Reason"] = zip(*df.apply(calculate_score_and_reason, axis=1))
     decision_map = lambda s: "🟢 STRONG BUY / ADD" if s >= 78 else "🟡 HOLD" if s >= 65 else "🔴 REDUCE / DUMP"
     df["Recommendation"] = df["Calculated Score"].apply(decision_map)
 
     st.dataframe(
-        df[["Ticker", "Calculated Score", "Recommendation", "Est. Annual Yield %", "Unrealized P/L %"]]
+        df[["Ticker", "Calculated Score", "Recommendation", "Reason", "Est. Annual Yield %", "Unrealized P/L %"]]
         .style.format({
             "Calculated Score": "{:.1f}",
             "Est. Annual Yield %": "{:.1f}%",
@@ -126,11 +153,34 @@ elif page == "ETF Decision Engine":
         use_container_width=True, hide_index=True
     )
 
+    st.subheader("🔄 Specific Rebalancing Action Steps")
+    st.markdown("**Recommended Actions (based on current vs target allocation):**")
+    
+    actions = []
+    for _, row in df.iterrows():
+        diff = row["Current %"] - row["Target %"]
+        if diff > 3:
+            actions.append(f"**SELL** {diff:.1f}% of **{row['Ticker']}** → rotate into higher-scoring holdings")
+        elif diff < -3:
+            actions.append(f"**BUY** {abs(diff):.1f}% more **{row['Ticker']}** (Strong opportunity)")
+    
+    for action in actions:
+        st.write(f"• {action}")
+    
+    st.success("""
+    **Overall Rebalancing Plan (June 2026)**:
+    1. Sell ~2.9% of JEPI (overweight) → Use proceeds to buy more IBHJ
+    2. Buy ~5.7% more JEPQ to reach 20% target
+    3. Increase IBHJ slightly if capital available
+    4. Keep EVHY near target
+    5. After rebalancing, check Tax Loss Harvest Simulator if needed
+    """)
+
     st.info("""
-    **Recommended Strategy**  
-    • Core: 40% JEPI + 20% JEPQ  
-    • Strong Bond Buffer: 20% IBHJ + 15% EVHY  
-    • Rebalance when Score drops below 65
+    **What to Do Based on Scores**:
+    - **STRONG BUY / ADD**: Increase position toward (or above) target %
+    - **HOLD**: Maintain current allocation
+    - **REDUCE / DUMP**: Sell and rotate into stronger holdings or bonds
     """)
 
 # ========================

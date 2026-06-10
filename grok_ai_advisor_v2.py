@@ -256,15 +256,6 @@ elif page == "Future Portfolio":
         st.metric("**Base Case** (9% total return)", f"${round(current_portfolio_value * 1.09):,.0f}", f"+${round(current_portfolio_value * 0.09):,.0f}")
     with col3:
         st.metric("**Optimistic** (12% total return)", f"${round(current_portfolio_value * 1.12):,.0f}", f"+${round(current_portfolio_value * 0.12):,.0f}")
-    st.subheader("Base Case Breakdown (9% Total Return)")
-    projected_income_2027 = round(total_annual * 1.03, 0)
-    projected_capital_growth = round(current_portfolio_value * 0.09, 0)
-    projected_total_value = round(current_portfolio_value + projected_capital_growth + projected_income_2027, 0)
-    col_a, col_b, col_c = st.columns(3)
-    with col_a: st.metric("Expected Income (2027)", f"${projected_income_2027:,.0f}")
-    with col_b: st.metric("Expected Capital Growth", f"${projected_capital_growth:,.0f}")
-    with col_c: st.metric("Total Projected Value", f"${projected_total_value:,.0f}")
-    st.info("**Key Assumptions for 2027:**\n- Base case assumes 9% total return\n- High-yield slice managed actively\n- Surplus reinvested per 60/30/10 rule")
 
 elif page == "Holding Details":
     st.subheader("Detailed Holding Information")
@@ -299,13 +290,9 @@ elif page == "Reinvestment Strategy":
     with col2: st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
     with col3: st.metric("Quality Dividend Growth (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
 
-    # High-Yield management (shortened for space - add your full block if needed)
-    st.subheader("High-Yield Slice Management")
-    st.success("High-Yield slice updated with EVHY.")
-
 elif page == "Guardrails & Alerts":
     st.subheader("Proactive Guardrails")
     st.info("All guardrails are currently GREEN. No immediate action required.")
 
-# This line must be OUTSIDE all if/elif blocks
-st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y
+# Final line - must be at column 0 (no indentation)
+st.caption(f"Last updated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")

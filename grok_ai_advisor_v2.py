@@ -196,8 +196,9 @@ if 'quality_growth_tracker' not in st.session_state:
         {"Asset": "VIG", "Position": 1000, "Payments_Made": 0}
     ])
 
-# ==================== PAGE SELECTION ====================
+# ==================== PAGES ====================
 if page == "Portfolio Overview":
+    # [Same as before - unchanged]
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     with col1: st.metric("Target Capital", f"${TOTAL_CAPITAL:,}")
     with col2: st.metric("Current Portfolio Value", f"${current_portfolio_value:,.0f}")
@@ -356,8 +357,8 @@ elif page == "Reinvestment Strategy":
     hy_df["Shares"] = hy_df.apply(lambda row: row["Cost_Basis"] / row["Current_Price"] if row["Current_Price"] > 0 else 0, axis=1)
     hy_df["Current_Value"] = hy_df["Shares"] * hy_df["Current_Price"]
     hy_df["Unrealized_PL"] = hy_df["Current_Value"] - hy_df["Cost_Basis"]
-    hy_df["Unrealized_PL_Pct"] = (hy_df["Unrealized_PL"] / hy_df["Cost_Basis"] * 100).round(1) if hy_df["Cost_Basis"] > 0 else 0
-    hy_df["Total_Return_Pct"] = ((hy_df["Current_Value"] + hy_df["Cum_Dividends"] - hy_df["Cost_Basis"]) / hy_df["Cost_Basis"] * 100).round(1) if hy_df["Cost_Basis"] > 0 else 0
+    hy_df["Unrealized_PL_Pct"] = (hy_df["Unrealized_PL"] / hy_df["Cost_Basis"] * 100).round(1).where(hy_df["Cost_Basis"] > 0, 0)
+    hy_df["Total_Return_Pct"] = ((hy_df["Current_Value"] + hy_df["Cum_Dividends"] - hy_df["Cost_Basis"]) / hy_df["Cost_Basis"] * 100).round(1).where(hy_df["Cost_Basis"] > 0, 0)
     hy_df["Months_Held"] = hy_df["Purchase_Date"].apply(lambda d: max(1, (datetime.now().date() - d).days // 30))
 
     avg_return = hy_df["Total_Return_Pct"].mean()
@@ -418,7 +419,6 @@ elif page == "Reinvestment Strategy":
         "Unrealized_PL": "${:,.0f}", "Unrealized_PL_Pct": "{:.1f}%", "Total_Return_Pct": "{:.1f}%"
     }), use_container_width=True, hide_index=True)
 
-    # ==================== CORE & QUALITY SECTIONS (unchanged) ====================
     # Core Stable
     st.subheader("Core Stable Specific Purchase")
     st.subheader("AI Advisor for Core Stable")

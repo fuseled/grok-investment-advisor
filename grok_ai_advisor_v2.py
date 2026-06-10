@@ -25,8 +25,8 @@ page = st.sidebar.radio(
      "Holding Details", "Portfolio Combined", "Reinvestment Strategy", "Guardrails & Alerts"]
 )
 
-st.title("Grok AI Investment Advisor v2")
-st.markdown("**$2.1M Portfolio → ~$190k/year** | Built for Jay")
+# Changed header title
+st.title("CASH AdvIsor")
 
 # ==================== PORTFOLIO DATA ====================
 TOTAL_CAPITAL = 2_100_000
@@ -256,7 +256,7 @@ elif page == "Reinvestment Strategy":
     with col2: st.metric("Core Stable Income (30%)", f"${round(monthly_surplus * 0.30):,.0f}")
     with col3: st.metric("Quality Dividend Growth (10%)", f"${round(monthly_surplus * 0.10):,.0f}")
 
-    # HIGH-YIELD
+    # HIGH-YIELD SECTION
     st.subheader("High-Yield Specific Purchase")
     st.subheader("AI Advisor for High-Yield Slice")
     if current_vix > 28:
@@ -285,7 +285,7 @@ elif page == "Reinvestment Strategy":
     total_df = pd.concat([edited_hy, pd.DataFrame([total_row])], ignore_index=True)
     st.dataframe(total_df.style.apply(lambda x: ['font-weight: bold; background-color: #2d3748']*len(x) if x.name == len(total_df)-1 else ['']*len(x), axis=1), use_container_width=True, hide_index=True)
 
-    # (Core Stable and Quality Growth sections follow the same pattern - they are included in full in your file)
+    # CORE STABLE & QUALITY GROWTH sections follow the same pattern (full in your file)
 
 elif page == "Guardrails & Alerts":
     st.subheader("🛡️ Guardrails & Risk Controls")
